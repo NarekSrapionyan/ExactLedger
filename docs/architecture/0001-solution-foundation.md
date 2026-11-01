@@ -36,3 +36,19 @@ This change creates the host and project structure. Business entities, EF Core/D
 Use `development` for integration. Create working branches from it and target it with feature/fix/documentation pull requests. `main` receives reviewed, verified versions through release pull requests from `development`. The current feature branch and the initial `development` branch share the same base commit; no history rewrite is needed.
 
 CI and branch protection are follow-up configuration work, not implied by the presence of these branch names. The CI task must cover pull requests into `development` and release validation into `main`.
+
+## Local development
+
+Install the SDK pinned in `global.json`, then run from the repository root:
+
+```sh
+dotnet restore ExactLedger.sln --locked-mode
+dotnet build ExactLedger.sln --configuration Release --no-restore
+dotnet test ExactLedger.sln --configuration Release --no-build --no-restore
+dotnet dev-certs https --trust
+dotnet run --project src/el.Api --launch-profile https
+```
+
+The API listens on `https://localhost:7243`; HTTP on port 5243 redirects to HTTPS. Liveness is `/health/live`; the Development-only OpenAPI document is `/openapi/v1.json`.
+
+Shared `appsettings.json`, Development logging and `launchSettings.json` are committed without secrets. Optional `appsettings.Local.json` is ignored. In Development, user secrets override local JSON; environment variables and command-line arguments take precedence. Set future PostgreSQL credentials through `ConnectionStrings:ExactLedger` in user secrets or `ConnectionStrings__ExactLedger` in the environment. No database is required to run the current host.
