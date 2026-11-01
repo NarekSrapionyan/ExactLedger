@@ -6,7 +6,7 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
-    <!-- Override the vulnerable 2.0.0 transitive dependency; see the foundation ADR. -->
+    <!-- Override the vulnerable 2.0.0 dependency (GHSA-v5pm-xwqc-g5wc). -->
     <PackageReference Include="Microsoft.OpenApi" />
   </ItemGroup>
 
