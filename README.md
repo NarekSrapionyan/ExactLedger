@@ -97,6 +97,14 @@ When intentionally changing package versions, update `Directory.Packages.props`,
 
 ## Contributing
 
-Use focused branches such as `feature/backend-solution-setup`. Pull request titles follow `type(scope): summary (TASK-ID)`, for example `feat(domain): add Money value object (BE-002.2)`.
+Use `development` as the integration branch and `main` for verified releases. Create focused working branches from the latest `development`, and open feature, fix, test, and documentation pull requests back into `development`. Promote reviewed and validated changes from `development` to `main` through a separate release pull request.
+
+```sh
+git switch development
+git pull --ff-only origin development
+git switch -c feature/backend-solution-setup
+```
+
+Do not commit feature work directly to either shared branch. Pull request titles follow `type(scope): summary (TASK-ID)`, for example `feat(domain): add Money value object (BE-002.2)`.
 
 Link the ClickUp task, explain the change and its validation, and use the [pull request template](.github/pull_request_template.md). Formatting follows `.editorconfig`; build warnings are treated as errors. Keep credentials, generated artifacts, and personal IDE files out of Git.

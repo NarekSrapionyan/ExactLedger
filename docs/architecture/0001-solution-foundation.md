@@ -30,3 +30,9 @@ Explicitly pin Microsoft.OpenApi to 2.7.5: the SDK API template otherwise resolv
 ## Boundaries
 
 This change creates the host and project structure. Business entities, EF Core/DbContext, monetary algorithms, authentication, scheduled business jobs, and bank adapters are separate tasks. PostgreSQL configuration has a named connection-string slot but is not consumed yet. CI implementation and automated architecture guards remain BE-001.2 and BE-001.3 respectively.
+
+## Branch workflow
+
+Use `development` for integration. Create working branches from it and target it with feature/fix/documentation pull requests. `main` receives reviewed, verified versions through release pull requests from `development`. The current feature branch and the initial `development` branch share the same base commit; no history rewrite is needed.
+
+CI and branch protection are follow-up configuration work, not implied by the presence of these branch names. The CI task must cover pull requests into `development` and release validation into `main`.

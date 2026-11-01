@@ -35,7 +35,7 @@ Example: `feat(domain): add Money value object (BE-002.2)`
 - [ ] Endpoint visible and documented in Swagger
 - [ ] Validation and error handling return correct status codes (ProblemDetails)
 - [ ] No secrets, no real personal data, no sensitive data in logs
-- [ ] Branch is up to date with the latest `main`, review comments resolved
+- [ ] Branch is up to date with its target branch (`development` for features, `main` for releases), review comments resolved
 - [ ] Checks are green (build, tests, coverage, secret scan, title)
 
 ## How to test
