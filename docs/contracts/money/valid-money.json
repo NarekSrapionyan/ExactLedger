@@ -1,0 +1,13 @@
+[
+  { "name": "USD typical amount", "json": { "amount": "250.00", "currency": "USD" }, "minorUnits": 25000 },
+  { "name": "JPY has no decimal part", "json": { "amount": "1000", "currency": "JPY" }, "minorUnits": 1000 },
+  { "name": "KWD has three decimal places", "json": { "amount": "1.234", "currency": "KWD" }, "minorUnits": 1234 },
+  { "name": "USD zero", "json": { "amount": "0.00", "currency": "USD" }, "minorUnits": 0 },
+  { "name": "USD smallest negative", "json": { "amount": "-0.01", "currency": "USD" }, "minorUnits": -1 },
+  { "name": "JPY negative", "json": { "amount": "-1", "currency": "JPY" }, "minorUnits": -1 },
+  { "name": "USD maximum", "json": { "amount": "999999999.99", "currency": "USD" }, "minorUnits": 99999999999 },
+  { "name": "USD minimum", "json": { "amount": "-999999999.99", "currency": "USD" }, "minorUnits": -99999999999 },
+  { "name": "JPY maximum", "json": { "amount": "99999999999", "currency": "JPY" }, "minorUnits": 99999999999 },
+  { "name": "KWD maximum", "json": { "amount": "99999999.999", "currency": "KWD" }, "minorUnits": 99999999999 },
+  { "name": "KWD minimum", "json": { "amount": "-99999999.999", "currency": "KWD" }, "minorUnits": -99999999999 }
+]
