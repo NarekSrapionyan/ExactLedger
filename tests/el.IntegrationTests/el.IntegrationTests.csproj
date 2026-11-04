@@ -18,6 +18,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Mobile contract fixtures are tested so the documented examples always match the API. -->
+    <None Include="..\..\docs\contracts\money\*.json" LinkBase="Fixtures\Money" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\src\el.Api\el.Api.csproj" />
     <ProjectReference Include="..\..\src\el.Infrastructure\el.Infrastructure.csproj" />
   </ItemGroup>
