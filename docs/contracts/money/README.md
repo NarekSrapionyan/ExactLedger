@@ -12,6 +12,7 @@ Every monetary value in the API is a JSON object with a decimal **string** amoun
 - `currency` is an uppercase three-letter code supported by the API: currently USD, JPY and KWD.
 - No other properties are allowed, property names are case-sensitive, and each property appears once.
 - JSON numbers are rejected for money, both as the whole value and as the amount.
+- Money itself cannot be `null`, whether it is the root value, a request property, or an array element. Reading or writing a null Money fails with `money.not_object`; use an explicit zero amount when the value is zero. Required or omitted request fields are validated by their request DTO/use case.
 - Responses always use the same canonical form.
 
 ## Fixtures
@@ -26,7 +27,7 @@ Both files are loaded by `el.IntegrationTests`, so they always match the server'
 | Code | Meaning |
 |---|---|
 | `money.numeric_not_allowed` | Money or its amount was sent as a JSON number |
-| `money.not_object` | Money is not a JSON object |
+| `money.not_object` | Money is null or is not a JSON object |
 | `money.missing_amount` / `money.missing_currency` | A required property is missing |
 | `money.amount_not_string` | The amount is null, a boolean, an object or an array |
 | `money.invalid_currency` | The currency is not a three-letter uppercase string |
@@ -44,6 +45,6 @@ The HTTP response format for these errors (ProblemDetails with code, message and
 ## Swift client guidance
 
 - Decode `amount` as `String`; never let `JSONDecoder` read money as `Double` or `Decimal` from a JSON number.
-- Convert the string to integer minor units for calculations, or use `Decimal(string:locale:)` with `Locale(identifier: "en_US_POSIX")`. Never use the device locale for API values.
+- Keep financial calculations on the backend. For display-only formatting, use exact integer minor units or `Decimal(string:locale:)` with `Locale(identifier: "en_US_POSIX")`. Never use the device locale for API values.
 - Format display values for the user separately from the API value.
 - Send amounts back in the canonical form, with exactly the currency's decimal places.

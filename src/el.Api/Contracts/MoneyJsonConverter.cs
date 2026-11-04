@@ -17,6 +17,9 @@ public sealed class MoneyJsonConverter : JsonConverter<Money>
     private readonly CurrencyCatalog _catalog;
     private readonly int _referenceVersion;
 
+    // Reference converters otherwise let System.Text.Json bypass Read/Write for null.
+    public override bool HandleNull => true;
+
     public MoneyJsonConverter(CurrencyCatalog catalog, int referenceVersion)
     {
         ArgumentNullException.ThrowIfNull(catalog);
@@ -103,7 +106,10 @@ public sealed class MoneyJsonConverter : JsonConverter<Money>
     public override void Write(Utf8JsonWriter writer, Money value, JsonSerializerOptions options)
     {
         ArgumentNullException.ThrowIfNull(writer);
-        ArgumentNullException.ThrowIfNull(value);
+        if (value is null)
+        {
+            throw Error(MoneyJsonErrorCodes.NotObject, "Money must be an object with amount and currency, not null.");
+        }
 
         var definition = _catalog.Resolve(value.Currency, _referenceVersion);
 

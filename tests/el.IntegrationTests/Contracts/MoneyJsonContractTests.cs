@@ -111,6 +111,35 @@ public sealed class MoneyJsonContractTests
     }
 
     [Fact]
+    public void Null_money_inside_a_request_is_rejected_with_its_property_path()
+    {
+        var exception = Assert.Throws<MoneyJsonException>(() => JsonSerializer.Deserialize<PriceRequest>(
+            """{"price":null}""", Options));
+
+        Assert.Equal(MoneyJsonErrorCodes.NotObject, exception.Code);
+        Assert.Equal("$.price", exception.Path);
+    }
+
+    [Fact]
+    public void Null_money_inside_an_array_is_rejected_with_its_element_path()
+    {
+        var exception = Assert.Throws<MoneyJsonException>(() => JsonSerializer.Deserialize<Money[]>("[null]", Options));
+
+        Assert.Equal(MoneyJsonErrorCodes.NotObject, exception.Code);
+        Assert.Equal("$[0]", exception.Path);
+    }
+
+    [Fact]
+    public void Writing_null_money_is_rejected_instead_of_silently_emitting_null()
+    {
+        var root = Assert.Throws<MoneyJsonException>(() => JsonSerializer.Serialize<Money>(null!, Options));
+        var nested = Assert.Throws<MoneyJsonException>(() => JsonSerializer.Serialize(new PriceRequest(null!), Options));
+
+        Assert.Equal(MoneyJsonErrorCodes.NotObject, root.Code);
+        Assert.Equal(MoneyJsonErrorCodes.NotObject, nested.Code);
+    }
+
+    [Fact]
     public void Money_inside_a_request_round_trips()
     {
         var request = JsonSerializer.Deserialize<PriceRequest>(
@@ -134,6 +163,8 @@ public sealed class MoneyJsonContractTests
             JsonSerializer.Serialize(Money.FromMinorUnits(25000, CurrencyReferenceData.Usd), options));
         Assert.Throws<MoneyJsonException>(
             () => JsonSerializer.Deserialize<Money>("""{"amount":250.00,"currency":"USD"}""", options));
+        Assert.Throws<MoneyJsonException>(() => JsonSerializer.Deserialize<Money>("null", options));
+        Assert.Throws<MoneyJsonException>(() => JsonSerializer.Deserialize<PriceRequest>("""{"price":null}""", options));
     }
 
     public sealed record PriceRequest(Money Price);

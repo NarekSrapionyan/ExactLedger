@@ -1,4 +1,5 @@
 [
+  { "name": "money is null", "json": null, "code": "money.not_object" },
   { "name": "amount as a JSON number", "json": { "amount": 250.00, "currency": "USD" }, "code": "money.numeric_not_allowed" },
   { "name": "money as a bare JSON number", "json": 250.00, "code": "money.numeric_not_allowed" },
   { "name": "money as a bare string without currency", "json": "250.00", "code": "money.not_object" },
