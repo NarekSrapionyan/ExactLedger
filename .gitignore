@@ -10,6 +10,7 @@ publish/
 **/TestResults/
 **/coverage/
 coverage.*
+!coverage.runsettings
 *.trx
 *.coverage
 *.coveragexml
