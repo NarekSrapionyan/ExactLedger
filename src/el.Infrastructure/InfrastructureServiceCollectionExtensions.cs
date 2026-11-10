@@ -26,6 +26,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddDbContext<ExactLedgerDbContext>(
             (provider, options) => ExactLedgerDbContextOptions.Configure(options, runtimeConnectionString(provider)));
         services.AddScoped<IUnitOfWork, EfUnitOfWork>();
+        services.AddScoped<IJournalEntryStore, JournalEntryStore>();
 
         return services;
     }
