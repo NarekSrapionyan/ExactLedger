@@ -31,7 +31,7 @@ Require these status checks in the repository branch rules for both shared branc
 - `Build and test (ubuntu-latest)`
 - `Build and test (windows-latest)`
 
-Require review by someone other than the author. A workflow file does not itself enable branch protection; repository branch rules must be configured separately. PostgreSQL-backed tests will join this workflow when BE-007 introduces migrations and database fixtures. Current API tests need no database service.
+Require review by someone other than the author. A workflow file does not itself enable branch protection; repository branch rules must be configured separately. Tests marked `[Trait("Category", "PostgreSQL")]` start PostgreSQL with Testcontainers and need Docker. The Linux job runs them; the Windows job runs every other test with `--filter "Category!=PostgreSQL"` because hosted Windows runners cannot run Linux containers. See `docs/development/database.md`.
 
 ## Coverage
 
