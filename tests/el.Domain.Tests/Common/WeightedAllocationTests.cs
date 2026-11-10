@@ -6,21 +6,20 @@ namespace el.Domain.Tests.Common;
 
 public sealed class WeightedAllocationTests
 {
-    public static IEnumerable<object[]> GoldenCases()
+    public static TheoryData<long, long[], long[]> GoldenCases => new()
     {
-        yield return [5L, new long[] { 50, 30, 20 }, new long[] { 3, 1, 1 }];
-        yield return [0L, new long[] { 50, 30, 20 }, new long[] { 0, 0, 0 }];
-        yield return [100L, new long[] { 50, 30, 20 }, new long[] { 50, 30, 20 }];
-        yield return [1L, new long[] { 1, 1, 1 }, new long[] { 1, 0, 0 }];
-        yield return [2L, new long[] { 1, 1, 1 }, new long[] { 1, 1, 0 }];
-        yield return [10L, new long[] { 1, 1, 1 }, new long[] { 4, 3, 3 }];
-        yield return [1L, new long[] { 0, 1, 1 }, new long[] { 0, 1, 0 }];
-        yield return [5L, new long[] { 0, 0, 7 }, new long[] { 0, 0, 5 }];
-        yield return [long.MaxValue, new long[] { long.MaxValue }, new long[] { long.MaxValue }];
-        yield return [long.MaxValue, new long[] { long.MaxValue, long.MaxValue },
-            new long[] { 4_611_686_018_427_387_904, 4_611_686_018_427_387_903 }];
-        yield return [5L, new long[] { long.MaxValue, long.MaxValue, long.MaxValue }, new long[] { 2, 2, 1 }];
-    }
+        { 5L, new long[] { 50, 30, 20 }, new long[] { 3, 1, 1 } },
+        { 0L, new long[] { 50, 30, 20 }, new long[] { 0, 0, 0 } },
+        { 100L, new long[] { 50, 30, 20 }, new long[] { 50, 30, 20 } },
+        { 1L, new long[] { 1, 1, 1 }, new long[] { 1, 0, 0 } },
+        { 2L, new long[] { 1, 1, 1 }, new long[] { 1, 1, 0 } },
+        { 10L, new long[] { 1, 1, 1 }, new long[] { 4, 3, 3 } },
+        { 1L, new long[] { 0, 1, 1 }, new long[] { 0, 1, 0 } },
+        { 5L, new long[] { 0, 0, 7 }, new long[] { 0, 0, 5 } },
+        { long.MaxValue, new long[] { long.MaxValue }, new long[] { long.MaxValue } },
+        { long.MaxValue, new long[] { long.MaxValue, long.MaxValue }, new long[] { 4_611_686_018_427_387_904, 4_611_686_018_427_387_903 } },
+        { 5L, new long[] { long.MaxValue, long.MaxValue, long.MaxValue }, new long[] { 2, 2, 1 } },
+    };
 
     [Theory]
     [MemberData(nameof(GoldenCases))]
@@ -102,8 +101,9 @@ public sealed class WeightedAllocationTests
     [InlineData(1)]
     public void Rejects_empty_or_all_zero_weights_even_for_zero_amount(long amount)
     {
-        Assert.Throws<ArgumentException>(() => WeightedAllocation.Allocate(amount, []));
-        Assert.Throws<ArgumentException>(() => WeightedAllocation.Allocate(amount, [new("A", 0), new("B", 0)]));
+        Assert.Equal("lines", Assert.Throws<ArgumentException>(() => WeightedAllocation.Allocate(amount, [])).ParamName);
+        Assert.Equal("lines", Assert.Throws<ArgumentException>(
+            () => WeightedAllocation.Allocate(amount, [new("A", 0), new("B", 0)])).ParamName);
     }
 
     [Fact]
@@ -246,6 +246,27 @@ public sealed class WeightedAllocationTests
                     Assert.Equal(0, share.MinorUnits);
                 }
             }
+
+            // Largest Remainder: each share is its floor or floor + 1, and the lines rounded up are
+            // exactly the first ones by remainder descending, then allocationLineId ordinal ascending.
+            var ranked = result
+                .Select(share =>
+                {
+                    var floor = BigInteger.DivRem(new BigInteger(amount) * weights[share.AllocationLineId], totalWeight, out var remainder);
+                    var roundedUp = new BigInteger(share.MinorUnits) - floor;
+
+                    Assert.True(roundedUp.IsZero || roundedUp.IsOne);
+
+                    return (share.AllocationLineId, Remainder: remainder, RoundedUp: roundedUp.IsOne);
+                })
+                .OrderByDescending(line => line.Remainder)
+                .ThenBy(line => line.AllocationLineId, StringComparer.Ordinal)
+                .ToArray();
+            var roundedUpCount = ranked.Count(line => line.RoundedUp);
+
+            Assert.Equal(
+                ranked.Select((_, rank) => rank < roundedUpCount),
+                ranked.Select(line => line.RoundedUp));
         }
     }
 }
