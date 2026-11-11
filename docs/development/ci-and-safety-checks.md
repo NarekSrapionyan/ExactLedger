@@ -2,6 +2,9 @@
 
 Tasks: BE-001.2 and BE-001.3.
 
+For the database-independent BE-001..BE-006 release scope, use the
+[Sprint 1 acceptance and release gate](sprint-1-qa.md) alongside this CI guide.
+
 ## Run locally
 
 ```sh
