@@ -54,7 +54,9 @@ try {
     $settings.GetEnumerator() | ForEach-Object { "$($_.Key)=$($_.Value)" } | Set-Content -LiteralPath $envFile -Encoding ASCII
     foreach ($key in $settings.Keys) {
         $savedEnvironment[$key] = [Environment]::GetEnvironmentVariable($key, 'Process')
-        [Environment]::SetEnvironmentVariable($key, $null, 'Process')
+        # Set explicit values: empty inherited variables can override --env-file
+        # on newer PowerShell/.NET versions even when cleared with a null value.
+        [Environment]::SetEnvironmentVariable($key, [string]$settings[$key], 'Process')
     }
 
     Invoke-Compose config --quiet
