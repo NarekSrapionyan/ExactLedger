@@ -8,6 +8,33 @@ Task: BE-007.1 — DbContext & PostgreSQL Setup
 - `el.Infrastructure/Persistence/ExactLedgerDbContext` maps all tables into the `ledger` schema, with the EF migrations history in `ledger.__ef_migrations_history`. Mappings are `IEntityTypeConfiguration` classes in `Persistence/Configurations` (BE-007.2/BE-007.3).
 - `AddInfrastructure` registers the DbContext and `IUnitOfWork`. No retrying execution strategy is configured, so a failed unit of work is never replayed silently.
 
+## Schema (BE-007.2)
+
+All tables are in the `ledger` schema. Constraints repeat the domain rules, so invalid rows are rejected even when they do not come through the domain model. Enums are stored as their integer values (all start at 1).
+
+| Table | Key | Constraints |
+|---|---|---|
+| `currencies` | `code` | `code` is three uppercase letters. The supported currency codes; definitions and accounts reference them, so an unknown currency is rejected. |
+| `currency_definitions` | `(code, version)` | FK `code` → `currencies`; exponent 0–4; version ≥ 1. |
+| `parties` | `id` (uuid) | Name not blank (≤ 200 characters); status Active/Suspended/Closed. |
+| `accounts` | `id` (uuid) | Unique `code` matching `^[A-Z0-9._-]{1,64}$`; defined type and status; payable/escrow accounts have a party and system accounts do not; one account per party, type and currency; FK `party_id` → `parties` and `currency` → `currencies`, both `RESTRICT` on delete. |
+
+Money columns (BIGINT minor units with range checks) arrive with journal lines in BE-007.3. Sums of BIGINT minor units are read with `QueryExactIntegerAsync`, which returns PostgreSQL's NUMERIC result as an exact `BigInteger` instead of narrowing it to a 64-bit integer.
+
+### Seed data
+
+Only synthetic data is seeded: five parties whose names all start with "Synthetic" (two sellers, an affiliate, a card processor and a tax authority), the reference currency definitions (USD/2, JPY/0, KWD/3), and these account families for each currency:
+
+| Family | Type | Party |
+|---|---|---|
+| `CLEARING.BANK.<CUR>` | Clearing | none |
+| `REVENUE.COMMISSION.<CUR>` | Revenue | none |
+| `PAYABLE.TAX.<CUR>` | Payable | Synthetic Tax Authority |
+| `PAYABLE.PROCESSOR.<CUR>` | Payable | Synthetic Card Processor |
+| `PAYABLE.<PARTY>.<CUR>`, `ESCROW.<PARTY>.<CUR>` | Payable, Escrow | each seller and the affiliate |
+
+Seed IDs are derived from fixed names, so they are identical on every machine and in every migration.
+
 ## Connection strings
 
 | Name | Role | Used by |
