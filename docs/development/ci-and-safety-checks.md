@@ -2,6 +2,9 @@
 
 Tasks: BE-001.2 and BE-001.3.
 
+For the database-independent BE-001..BE-006 release scope, use the
+[Sprint 1 acceptance and release gate](sprint-1-qa.md) alongside this CI guide.
+
 ## Run locally
 
 ```sh
@@ -31,7 +34,9 @@ Require these status checks in the repository branch rules for both shared branc
 - `Build and test (ubuntu-latest)`
 - `Build and test (windows-latest)`
 
-Require review by someone other than the author. A workflow file does not itself enable branch protection; repository branch rules must be configured separately. Tests marked `[Trait("Category", "PostgreSQL")]` start PostgreSQL with Testcontainers and need Docker. The Linux job runs them; the Windows job runs every other test with `--filter "Category!=PostgreSQL"` because hosted Windows runners cannot run Linux containers. See `docs/development/database.md`.
+Pull requests and both CI checks are required. Team process requires review and an `Approved` decision from someone other than the PR author. GitHub intentionally enforces zero required approving reviews: missing approval does not technically block merge, but this does not make review optional in the team's process. Any review discussions must still be resolved. Force pushes remain blocked and no deletion restriction is added. A workflow file does not itself enable branch protection; repository branch rules must be configured separately.
+
+Tests marked `[Trait("Category", "PostgreSQL")]` start PostgreSQL with Testcontainers and need Docker. The Linux job runs them; the Windows job runs every other test with `--filter "Category!=PostgreSQL"` because hosted Windows runners cannot run Linux containers. See `docs/development/database.md`.
 
 ## Coverage
 
