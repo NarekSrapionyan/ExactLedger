@@ -1,4 +1,9 @@
 # Keep the SDK in sync with global.json. No SDK or source code in runtime images.
+# The runtime images are pinned to the latest .NET 10 servicing release (not the
+# SDK's older 10.0.7 runtime) so builds are reproducible and include security
+# fixes. Bump RUNTIME_VERSION with each .NET servicing release.
+ARG RUNTIME_VERSION=10.0.15
+
 FROM mcr.microsoft.com/dotnet/sdk:10.0.203 AS build
 WORKDIR /source
 COPY global.json Directory.Build.props Directory.Packages.props ./
@@ -11,16 +16,15 @@ RUN dotnet restore src/el.Api/el.Api.csproj --locked-mode && dotnet tool restore
 COPY src/ src/
 RUN dotnet publish src/el.Api/el.Api.csproj --configuration Release --no-restore --output /out/api /p:UseAppHost=false
 RUN dotnet ef migrations bundle --project src/el.Infrastructure --startup-project src/el.Api \
-    --configuration Release --no-build --output /out/migrations/efbundle \
-    && cp src/el.Api/appsettings.json /out/migrations/appsettings.json
+    --configuration Release --no-build --output /out/migrations/efbundle
 
-FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS migrations
+FROM mcr.microsoft.com/dotnet/aspnet:${RUNTIME_VERSION} AS migrations
 WORKDIR /app
 COPY --from=build --chown=app:app /out/migrations/ ./
 USER $APP_UID
 ENTRYPOINT ["./efbundle"]
 
-FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS api
+FROM mcr.microsoft.com/dotnet/aspnet:${RUNTIME_VERSION} AS api
 WORKDIR /app
 COPY --from=build --chown=app:app /out/api/ ./
 USER $APP_UID

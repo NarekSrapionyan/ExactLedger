@@ -59,11 +59,6 @@ jobs:
         shell: pwsh
         run: ./scripts/Check-DomainCoverage.ps1
 
-      - name: Verify local Compose environment
-        if: ${{ runner.os == 'Linux' }}
-        shell: pwsh
-        run: ./scripts/Test-LocalCompose.ps1
-
       - name: Upload test and coverage results
         if: ${{ always() }}
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
@@ -72,3 +67,20 @@ jobs:
           path: artifacts/test-results/
           if-no-files-found: warn
           retention-days: 14
+
+  compose-smoke:
+    # Separate from build-and-test so it runs in parallel and a registry or Docker
+    # problem is reported on its own check. The images build the solution
+    # themselves, so no .NET SDK is installed on the runner.
+    name: Compose smoke (ubuntu-latest)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
+      - name: Verify local Compose environment
+        shell: pwsh
+        run: ./scripts/Test-LocalCompose.ps1

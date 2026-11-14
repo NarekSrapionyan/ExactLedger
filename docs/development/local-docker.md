@@ -50,9 +50,11 @@ docker compose --profile app up --build -d
 ```
 
 Both API and migration images run as a non-root user and contain runtime files,
-not the .NET SDK. The SDK build image matches `global.json`; the ASP.NET runtime
-image follows the .NET 10 servicing tag. Use `docker compose build --pull` when
-refreshing base images.
+not the .NET SDK. The SDK build image matches `global.json`. The ASP.NET runtime
+image is pinned with `RUNTIME_VERSION` in the `Dockerfile` to the latest .NET 10
+servicing release (newer than the SDK's own runtime, for security fixes); bump it
+with each servicing release. Use `docker compose build --pull` when refreshing
+base images.
 
 ## Database in Docker, API on the host
 
@@ -88,9 +90,11 @@ migration connection string.
 | `exactledger_runtime` | Non-login group with the privileges granted by migrations. |
 | `exactledger_app` | API login using APP_PASSWORD; inherits only runtime privileges. |
 
-The PostgreSQL init script creates roles once, on an empty volume. The migration
-service receives only the migration connection; the API receives only the runtime
-connection. See [database safety and migrations](database.md) for the journal guards.
+The PostgreSQL init script creates roles once, on an empty volume, and limits
+database connections to the provisioned logins. The migration service receives
+only the migration connection; the API receives only the runtime connection. The
+postgres container keeps all three passwords in its environment (visible with
+`docker inspect`), which is acceptable only for local development. See [database safety and migrations](database.md) for the journal guards.
 
 The API can insert new valid entries through controlled finalization. It cannot
 change the schema, rewrite/delete posted history, or append lines after finalization.
@@ -102,7 +106,8 @@ docker compose --profile app down
 ```
 
 This removes containers and the network while retaining the named `postgres-data`
-volume. The next startup keeps existing data and applies any pending migrations.
+volume (mounted at `/var/lib/postgresql/data`, the PostgreSQL 17 layout; PostgreSQL 18
+images use a different data directory, so revisit the mount when upgrading). The next startup keeps existing data and applies any pending migrations.
 Changing passwords in `.env` does not change roles in an existing database: update
 the database credentials explicitly, or reset disposable local data as follows.
 
