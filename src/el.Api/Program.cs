@@ -1,5 +1,6 @@
 using el.Api.Contracts;
 using el.Domain.Common;
+using el.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -20,6 +21,10 @@ builder.Services.AddProblemDetails();
 builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.Converters.Add(
         new MoneyJsonConverter(CurrencyReferenceData.Catalog, CurrencyReferenceData.InitialVersion)));
+
+// Read when a DbContext is first created, after all configuration sources are applied.
+builder.Services.AddInfrastructure(provider => provider.GetRequiredService<IConfiguration>()
+    .GetConnectionString(InfrastructureServiceCollectionExtensions.RuntimeConnectionStringName));
 
 builder.Services.AddHealthChecks();
 builder.Services.AddOpenApi(options =>

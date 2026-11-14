@@ -45,8 +45,15 @@ jobs:
       - name: Build with warnings as errors
         run: dotnet build ExactLedger.sln --configuration Release --no-restore -warnaserror
 
-      - name: Run architecture, financial safety and application tests
+      # Linux runners have Docker, so Testcontainers starts PostgreSQL for the database tests.
+      - name: Run all tests, including PostgreSQL
+        if: ${{ runner.os == 'Linux' }}
         run: dotnet test ExactLedger.sln --configuration Release --no-build --no-restore --logger trx --results-directory artifacts/test-results --collect "XPlat Code Coverage" --settings coverage.runsettings
+
+      # Windows runners cannot run Linux containers; database tests are covered by the Linux job.
+      - name: Run tests except PostgreSQL
+        if: ${{ runner.os != 'Linux' }}
+        run: dotnet test ExactLedger.sln --configuration Release --no-build --no-restore --filter "Category!=PostgreSQL" --logger trx --results-directory artifacts/test-results --collect "XPlat Code Coverage" --settings coverage.runsettings
 
       - name: Check Domain coverage
         shell: pwsh
