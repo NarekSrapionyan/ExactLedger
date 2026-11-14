@@ -12,9 +12,11 @@ the full suite are rerun. Keep BE-007 PRs #12/#13/#14 outside this release candi
 
 ## Ownership and entry conditions
 
-- The QA Champion owns independent acceptance and the requirement-to-evidence matrix.
-- Developers own feature fixes and their regression tests. A developer's green run is evidence,
-  not independent QA approval.
+- The task owner owns the acceptance decision and requirement-to-evidence matrix. For this
+  Sprint 1 release, the owner explicitly delegated execution and evidence recording to Codex
+  on 2026-11-14. Record this as agent-executed QA, not independent human sign-off.
+- Developers own feature fixes and their regression tests. A green run must still be evaluated
+  against the scoped checklist and the owner's accepted limitations.
 - BE-001 through BE-006 and their implementation subtasks must be complete and merged.
 - Use a clean checkout/worktree, the SDK pinned by `global.json`, and locked dependencies.
 - This scope requires no PostgreSQL, Docker, authentication server or mobile simulator.
@@ -86,6 +88,10 @@ Use the documented HTTPS launch profile (`dotnet run --project src/el.Api --conf
 - `GET https://localhost:7243/openapi/v1.json`: 200, title `ExactLedger API`, version `v1`.
 - An unknown route returns 404 ProblemDetails; there are no settlement/login/balance endpoints.
 
+Trust may be scoped to the QA client with `curl --cacert <public-localhost-certificate.pem>`.
+This verifies the certificate chain and hostname without changing machine trust; do not use
+`--insecure`. Record scoped trust explicitly rather than claiming browser/OS trust was configured.
+
 Repeat with the host environment explicitly set to Production, using an available local URL
 and no launch profile. Health remains available; `/openapi/v1.json` and unknown routes return
 404 `application/problem+json`. Stop only the process started for the smoke check. Do not
@@ -104,10 +110,12 @@ not as passed or implemented. Journal construction in BE-006 is not a database c
 
 1. Freeze the candidate SHA and complete this checklist; no unresolved blocker/high-severity
    financial defect or unexplained failed/skipped in-scope test may remain.
-2. QA records an explicit independent PASS with their name, candidate SHA, evidence and any
-   accepted lower-severity issues. An automated run alone does not close this gate.
-3. Open a release PR into `main` for the tested BE-001..BE-006 candidate. Require a non-author
-   approval, resolved review discussions and both Linux/Windows CI checks on the release PR.
+2. The delegated QA executor records PASS/FAIL with their identity, candidate SHA, evidence,
+   execution limitations and owner-accepted lower-severity issues. For this release, Codex
+   may execute the checklist and record the result under the owner's explicit authorization.
+3. Open a release PR into `main` for the tested BE-001..BE-006 candidate. Approving reviews
+   are optional by owner decision on 2026-11-14; resolved review discussions and both
+   Linux/Windows CI checks remain mandatory, as does testing against the current target branch.
    If `development` advanced into BE-007, use a release branch from the accepted candidate
    rather than releasing untested work.
 4. Merge and tag the accepted version (proposed `v0.1.0`, subject to existing tags). Verify
@@ -116,4 +124,6 @@ not as passed or implemented. Journal construction in BE-006 is not a database c
    during acceptance, preserve the frozen release branch and carry fixes to development.
 
 Only mark the Sprint 1 QA gate complete after its declared exit criteria are met. Keep the
-automated preflight result separate from independent QA sign-off and release completion.
+automated evidence and delegated QA decision separate from independent human review and
+release completion. Record the accepted safety-check gaps in the QA task; they are not fixed
+or waived for future financial functionality by this Sprint 1 decision.
