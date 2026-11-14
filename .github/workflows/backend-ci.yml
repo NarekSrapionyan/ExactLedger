@@ -59,6 +59,11 @@ jobs:
         shell: pwsh
         run: ./scripts/Check-DomainCoverage.ps1
 
+      - name: Verify local Compose environment
+        if: ${{ runner.os == 'Linux' }}
+        shell: pwsh
+        run: ./scripts/Test-LocalCompose.ps1
+
       - name: Upload test and coverage results
         if: ${{ always() }}
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6

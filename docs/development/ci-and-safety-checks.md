@@ -38,6 +38,11 @@ Pull requests and both CI checks are required. Team process requires review and 
 
 Tests marked `[Trait("Category", "PostgreSQL")]` start PostgreSQL with Testcontainers and need Docker. The Linux job runs them; the Windows job runs every other test with `--filter "Category!=PostgreSQL"` because hosted Windows runners cannot run Linux containers. See `docs/development/database.md`.
 
+Linux also runs `scripts/Test-LocalCompose.ps1` to build and exercise the
+[local Compose environment](local-docker.md), including role provisioning,
+migrations, API startup and persistence across container recreation. It uses an
+isolated temporary project, not the developer's database.
+
 ## Coverage
 
 The gate merges covered source lines from all Domain coverage reports and requires at least 85% line coverage. API/Infrastructure and test fixtures do not inflate the Domain percentage. Empty Domain scaffolding is reported as **N/A**, never 100%. Missing reports fail; Domain source with no reported executable lines also fails and needs inspection. Enum-only or metadata-only additions should be reviewed if they trigger this diagnostic.

@@ -96,11 +96,8 @@ dotnet user-secrets --project src/el.Api set "ConnectionStrings:ExactLedger" "Ho
 
 or with the `ConnectionStrings__ExactLedger` environment variable. Use a member of `exactledger_runtime` for the API and the migration role only for `dotnet ef database update`.
 
-To run a local PostgreSQL for the API, for example:
-
-```sh
-docker run --name exactledger-db -e POSTGRES_PASSWORD=<choose a local password> -p 5432:5432 -d postgres:17.6-alpine
-```
+For a persistent local PostgreSQL with provisioned roles, migrations and an optional
+containerized API, use the [local Docker Compose environment](local-docker.md).
 
 ## Tests
 
