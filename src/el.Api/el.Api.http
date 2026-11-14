@@ -1,0 +1,9 @@
+@baseUrl = https://localhost:7243
+
+### Process liveness
+GET {{baseUrl}}/health/live
+Accept: text/plain
+
+### OpenAPI document (Development only)
+GET {{baseUrl}}/openapi/v1.json
+Accept: application/json

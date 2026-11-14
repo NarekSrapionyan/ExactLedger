@@ -1,0 +1,68 @@
+# .NET build output and local publish artifacts
+**/[Bb]in/
+**/[Oo]bj/
+artifacts/
+publish/
+*.nupkg
+*.snupkg
+
+# Test, coverage, and benchmark output
+**/TestResults/
+**/coverage/
+coverage.*
+!coverage.runsettings
+*.trx
+*.coverage
+*.coveragexml
+BenchmarkDotNet.Artifacts/
+
+# Visual Studio, Rider, VS Code, and per-user settings
+.vs/
+.idea/
+.vscode/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.DotSettings.user
+
+# Private configuration: shared appsettings and launchSettings stay tracked
+.env
+.env.*
+!.env.example
+**/appsettings.Local.json
+**/appsettings.*.Local.json
+**/launchSettings.Local.json
+secrets/
+*.pfx
+*.p12
+*.key
+*.pem
+
+# Logs, temporary files, and local database contents
+logs/
+*.log
+*.tmp
+*.bak
+*.db
+*.db-shm
+*.db-wal
+.local/
+pgdata/
+
+# Swift Package Manager and Xcode per-user/generated output
+.build/
+.swiftpm/
+DerivedData/
+**/xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
+*.xccheckout
+*.ipa
+*.dSYM/
+*.xcarchive/
+
+# Operating system files
+.DS_Store
+Thumbs.db
+Desktop.ini
