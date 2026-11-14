@@ -34,7 +34,7 @@ Require these status checks in the repository branch rules for both shared branc
 - `Build and test (ubuntu-latest)`
 - `Build and test (windows-latest)`
 
-Pull requests and both CI checks are required. Approving reviews are optional by owner decision on 2026-11-14; any review discussions must still be resolved. Force pushes remain blocked and no deletion restriction is added. A workflow file does not itself enable branch protection; repository branch rules must be configured separately. PostgreSQL-backed tests will join this workflow when BE-007 introduces migrations and database fixtures. Current API tests need no database service.
+Pull requests and both CI checks are required. Team process requires review and an `Approved` decision from someone other than the PR author. GitHub intentionally enforces zero required approving reviews: missing approval does not technically block merge, but this does not make review optional in the team's process. Any review discussions must still be resolved. Force pushes remain blocked and no deletion restriction is added. A workflow file does not itself enable branch protection; repository branch rules must be configured separately. PostgreSQL-backed tests will join this workflow when BE-007 introduces migrations and database fixtures. Current API tests need no database service.
 
 ## Coverage
 
