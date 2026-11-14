@@ -38,4 +38,6 @@ internal static class LedgerFixtures
         new(account, EntrySide.Credit, Amount(minorUnits, currency ?? account.Currency));
 
     internal static JournalEntryId EntryId() => new(Guid.Parse("33333333-3333-3333-3333-333333333333"));
+
+    internal static JournalReference Reference() => JournalReference.Parse("TEST:ENTRY-1");
 }

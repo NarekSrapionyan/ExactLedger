@@ -14,7 +14,7 @@ public sealed class JournalEntryTests
         var payable = Payable();
         var revenue = Revenue();
 
-        var entry = JournalEntry.Create(EntryId(), "Trade T-1 capture",
+        var entry = JournalEntry.Create(EntryId(), Reference(), "Trade T-1 capture",
             [Debit(clearing, 25000), Credit(payable, 22500), Credit(revenue, 2500)]);
 
         Assert.Equal(EntryId(), entry.Id);
@@ -34,7 +34,7 @@ public sealed class JournalEntryTests
     [Fact]
     public void Escrow_release_moves_funds_from_escrow_to_payable()
     {
-        var entry = JournalEntry.Create(EntryId(), "Escrow release", [Debit(Escrow(), 5000), Credit(Payable(), 5000)]);
+        var entry = JournalEntry.Create(EntryId(), Reference(), "Escrow release", [Debit(Escrow(), 5000), Credit(Payable(), 5000)]);
 
         Assert.Equal(new BigInteger(5000), entry.TotalMinorUnits);
     }
@@ -45,7 +45,7 @@ public sealed class JournalEntryTests
         var clearing = Clearing();
         var payable = Payable();
 
-        var entry = JournalEntry.Create(EntryId(), "Large batch",
+        var entry = JournalEntry.Create(EntryId(), Reference(), "Large batch",
         [
             Debit(clearing, Money.MaxMinorUnits),
             Debit(clearing, Money.MaxMinorUnits),
@@ -63,7 +63,7 @@ public sealed class JournalEntryTests
     public void Rejects_unbalanced_entries(long debit, long credit)
     {
         var exception = Assert.Throws<JournalValidationException>(
-            () => JournalEntry.Create(EntryId(), "Unbalanced", [Debit(Clearing(), debit), Credit(Payable(), credit)]));
+            () => JournalEntry.Create(EntryId(), Reference(), "Unbalanced", [Debit(Clearing(), debit), Credit(Payable(), credit)]));
 
         Assert.Equal(JournalError.Unbalanced, exception.Error);
         Assert.Null(exception.LineNumber);
@@ -73,7 +73,7 @@ public sealed class JournalEntryTests
     public void Rejects_lines_that_are_all_on_one_side()
     {
         var exception = Assert.Throws<JournalValidationException>(
-            () => JournalEntry.Create(EntryId(), "One-sided", [Debit(Clearing(), 100), Debit(Clearing(), 100)]));
+            () => JournalEntry.Create(EntryId(), Reference(), "One-sided", [Debit(Clearing(), 100), Debit(Clearing(), 100)]));
 
         Assert.Equal(JournalError.Unbalanced, exception.Error);
     }
@@ -82,9 +82,9 @@ public sealed class JournalEntryTests
     public void Rejects_fewer_than_two_lines()
     {
         Assert.Equal(JournalError.TooFewLines, Assert.Throws<JournalValidationException>(
-            () => JournalEntry.Create(EntryId(), "Empty", [])).Error);
+            () => JournalEntry.Create(EntryId(), Reference(), "Empty", [])).Error);
         Assert.Equal(JournalError.TooFewLines, Assert.Throws<JournalValidationException>(
-            () => JournalEntry.Create(EntryId(), "Single", [Debit(Clearing(), 100)])).Error);
+            () => JournalEntry.Create(EntryId(), Reference(), "Single", [Debit(Clearing(), 100)])).Error);
     }
 
     [Theory]
@@ -92,7 +92,7 @@ public sealed class JournalEntryTests
     [InlineData(-100)]
     public void Rejects_submitted_zero_or_negative_lines(long minorUnits)
     {
-        var exception = Assert.Throws<JournalValidationException>(() => JournalEntry.Create(EntryId(), "Bad line",
+        var exception = Assert.Throws<JournalValidationException>(() => JournalEntry.Create(EntryId(), Reference(), "Bad line",
             [Debit(Clearing(), 100), Credit(Payable(), 100), Credit(Revenue(), minorUnits)]));
 
         Assert.Equal(JournalError.NonPositiveAmount, exception.Error);
@@ -102,7 +102,7 @@ public sealed class JournalEntryTests
     [Fact]
     public void Rejects_mixed_currencies()
     {
-        var exception = Assert.Throws<JournalValidationException>(() => JournalEntry.Create(EntryId(), "Mixed",
+        var exception = Assert.Throws<JournalValidationException>(() => JournalEntry.Create(EntryId(), Reference(), "Mixed",
             [Debit(Clearing(), 1000), Credit(Payable(currency: Jpy), 1000)]));
 
         Assert.Equal(JournalError.MixedCurrencies, exception.Error);
@@ -112,7 +112,7 @@ public sealed class JournalEntryTests
     [Fact]
     public void Rejects_an_amount_in_a_different_currency_from_its_account()
     {
-        var exception = Assert.Throws<JournalValidationException>(() => JournalEntry.Create(EntryId(), "Wrong account",
+        var exception = Assert.Throws<JournalValidationException>(() => JournalEntry.Create(EntryId(), Reference(), "Wrong account",
             [Debit(Clearing(), 1000), Credit(Payable(currency: Jpy), 1000, currency: Usd)]));
 
         Assert.Equal(JournalError.AccountCurrencyMismatch, exception.Error);
@@ -125,7 +125,7 @@ public sealed class JournalEntryTests
         var closed = Payable();
         closed.Close();
 
-        var exception = Assert.Throws<JournalValidationException>(() => JournalEntry.Create(EntryId(), "Closed account",
+        var exception = Assert.Throws<JournalValidationException>(() => JournalEntry.Create(EntryId(), Reference(), "Closed account",
             [Debit(Clearing(), 1000), Credit(closed, 1000)]));
 
         Assert.Equal(JournalError.InactiveAccount, exception.Error);
@@ -139,7 +139,7 @@ public sealed class JournalEntryTests
         var clearing = Clearing();
         var payable = Payable();
 
-        var entry = JournalEntry.FromGeneratedComponents(EntryId(), "Waterfall",
+        var entry = JournalEntry.FromGeneratedComponents(EntryId(), Reference(), "Waterfall",
         [
             Debit(clearing, 25000),
             Credit(Revenue(), 0),
@@ -155,11 +155,11 @@ public sealed class JournalEntryTests
     public void Generated_components_still_reject_negative_values_and_too_few_lines()
     {
         Assert.Equal(JournalError.NonPositiveAmount, Assert.Throws<JournalValidationException>(
-            () => JournalEntry.FromGeneratedComponents(EntryId(), "Negative",
+            () => JournalEntry.FromGeneratedComponents(EntryId(), Reference(), "Negative",
                 [Debit(Clearing(), 100), Credit(Payable(), 200), Credit(Revenue(), -100)])).Error);
 
         Assert.Equal(JournalError.TooFewLines, Assert.Throws<JournalValidationException>(
-            () => JournalEntry.FromGeneratedComponents(EntryId(), "All zero but one",
+            () => JournalEntry.FromGeneratedComponents(EntryId(), Reference(), "All zero but one",
                 [Debit(Clearing(), 100), Credit(Payable(), 0)])).Error);
     }
 
@@ -168,17 +168,53 @@ public sealed class JournalEntryTests
     {
         var lines = new[] { Debit(Clearing(), 100), Credit(Payable(), 100) };
 
-        Assert.Throws<ArgumentException>(() => JournalEntry.Create(default, "Entry", lines));
-        Assert.Throws<ArgumentNullException>(() => JournalEntry.Create(EntryId(), null!, lines));
-        Assert.Throws<ArgumentException>(() => JournalEntry.Create(EntryId(), " ", lines));
+        Assert.Throws<ArgumentException>(() => JournalEntry.Create(default, Reference(), "Entry", lines));
+        Assert.Throws<ArgumentNullException>(() => JournalEntry.Create(EntryId(), Reference(), null!, lines));
+        Assert.Throws<ArgumentException>(() => JournalEntry.Create(EntryId(), Reference(), " ", lines));
         Assert.Throws<ArgumentOutOfRangeException>(
-            () => JournalEntry.Create(EntryId(), new string('d', JournalEntry.MaxDescriptionLength + 1), lines));
+            () => JournalEntry.Create(EntryId(), Reference(), new string('d', JournalEntry.MaxDescriptionLength + 1), lines));
         Assert.Equal("lines", Assert.Throws<ArgumentNullException>(
-            () => JournalEntry.Create(EntryId(), "Entry", null!)).ParamName);
+            () => JournalEntry.Create(EntryId(), Reference(), "Entry", null!)).ParamName);
         Assert.Equal("lines", Assert.Throws<ArgumentException>(
-            () => JournalEntry.Create(EntryId(), "Entry", [lines[0], null!])).ParamName);
+            () => JournalEntry.Create(EntryId(), Reference(), "Entry", [lines[0], null!])).ParamName);
         Assert.Equal("components", Assert.Throws<ArgumentNullException>(
-            () => JournalEntry.FromGeneratedComponents(EntryId(), "Entry", null!)).ParamName);
+            () => JournalEntry.FromGeneratedComponents(EntryId(), Reference(), "Entry", null!)).ParamName);
+    }
+
+    [Fact]
+    public void Records_its_reference_and_is_not_a_reversal_by_default()
+    {
+        var entry = JournalEntry.Create(EntryId(), Reference(), "Trade", [Debit(Clearing(), 100), Credit(Payable(), 100)]);
+
+        Assert.Equal(Reference(), entry.Reference);
+        Assert.Null(entry.ReversalOf);
+    }
+
+    [Fact]
+    public void Links_a_reversal_to_the_entry_it_reverses()
+    {
+        var originalId = new JournalEntryId(Guid.Parse("44444444-4444-4444-4444-444444444444"));
+
+        var reversal = JournalEntry.Create(EntryId(), JournalReference.Parse("TRADE:T-1:REFUND"), "Refund",
+            [Debit(Payable(), 100), Credit(Clearing(), 100)], reversalOf: originalId);
+        var generated = JournalEntry.FromGeneratedComponents(EntryId(), JournalReference.Parse("TRADE:T-1:REFUND"), "Refund",
+            [Debit(Payable(), 100), Credit(Clearing(), 100), Credit(Revenue(), 0)], reversalOf: originalId);
+
+        Assert.Equal(originalId, reversal.ReversalOf);
+        Assert.Equal(originalId, generated.ReversalOf);
+    }
+
+    [Fact]
+    public void Rejects_invalid_reference_and_reversal_links()
+    {
+        var lines = new[] { Debit(Clearing(), 100), Credit(Payable(), 100) };
+
+        Assert.Equal("reference", Assert.Throws<ArgumentNullException>(
+            () => JournalEntry.Create(EntryId(), null!, "Entry", lines)).ParamName);
+        Assert.Equal("reversalOf", Assert.Throws<ArgumentException>(
+            () => JournalEntry.Create(EntryId(), Reference(), "Entry", lines, reversalOf: default(JournalEntryId))).ParamName);
+        Assert.Equal("reversalOf", Assert.Throws<ArgumentException>(
+            () => JournalEntry.Create(EntryId(), Reference(), "Entry", lines, reversalOf: EntryId())).ParamName);
     }
 
     [Fact]
