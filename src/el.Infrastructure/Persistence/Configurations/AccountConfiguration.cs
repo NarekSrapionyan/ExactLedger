@@ -41,6 +41,9 @@ internal sealed class AccountConfiguration : IEntityTypeConfiguration<Account>
 
         builder.HasIndex(account => account.Code).IsUnique().HasDatabaseName("ux_accounts_code");
 
+        // Journal lines reference (id, currency), so a line's currency must match its account's.
+        builder.HasAlternateKey(account => new { account.Id, account.Currency }).HasName("ak_accounts_id_currency");
+
         // One payable and one escrow account per party and currency.
         builder.HasIndex(account => new { account.PartyId, account.Type, account.Currency })
             .IsUnique()

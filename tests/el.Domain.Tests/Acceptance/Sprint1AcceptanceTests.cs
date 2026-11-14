@@ -39,7 +39,9 @@ public sealed class Sprint1AcceptanceTests
         var escrow = Percentage(sellerShare, "10");
         var payable = sellerShare - escrow;
 
-        var entry = JournalEntry.FromGeneratedComponents(new JournalEntryId(Id(100)), "Sprint 1 synthetic example",
+        var entry = JournalEntry.FromGeneratedComponents(new JournalEntryId(Id(100)),
+            JournalReference.Parse(withSyntheticRegionalDeduction ? "SPRINT1:USD:REGIONAL" : "SPRINT1:USD:BASE"),
+            "Sprint 1 synthetic example",
         [
             new(clearing, EntrySide.Debit, gross),
             new(regionalAccount, EntrySide.Credit, regional),
@@ -89,7 +91,8 @@ public sealed class Sprint1AcceptanceTests
         var shares = WeightedAllocation.Allocate(amount.MinorUnits, [new("C", 20), new("A", 50), new("B", 30)]);
         var lines = shares.Select(share => new JournalLineDraft(accounts[share.AllocationLineId], EntrySide.Credit,
             Money.FromMinorUnits(share.MinorUnits, currency.Code)));
-        var entry = JournalEntry.Create(new JournalEntryId(Id(100)), "Sprint 1 weighted example",
+        var entry = JournalEntry.Create(new JournalEntryId(Id(100)),
+            JournalReference.Parse($"SPRINT1:WEIGHTED:{code}"), "Sprint 1 weighted example",
             lines.Prepend(new JournalLineDraft(clearing, EntrySide.Debit, amount)));
 
         Assert.Equal(5, amount.MinorUnits);
@@ -115,13 +118,15 @@ public sealed class Sprint1AcceptanceTests
             new(payableB, EntrySide.Credit, Money.FromMinorUnits(shares[1].MinorUnits, currency.Code)),
         };
 
-        var generated = JournalEntry.FromGeneratedComponents(new JournalEntryId(Id(100)), "Generated allocation", components);
+        var generated = JournalEntry.FromGeneratedComponents(new JournalEntryId(Id(100)),
+            JournalReference.Parse("SPRINT1:GENERATED"), "Generated allocation", components);
 
         Assert.Equal(2, generated.Lines.Count);
         Assert.DoesNotContain(generated.Lines, line => line.AccountId == payableB.Id);
         AssertBalanced(generated, amount);
         Assert.Equal(JournalError.NonPositiveAmount, Assert.Throws<JournalValidationException>(
-            () => JournalEntry.Create(new JournalEntryId(Id(101)), "Submitted allocation", components)).Error);
+            () => JournalEntry.Create(new JournalEntryId(Id(101)),
+                JournalReference.Parse("SPRINT1:SUBMITTED"), "Submitted allocation", components)).Error);
     }
 
     private static CurrencyDefinition Definition(string code) =>

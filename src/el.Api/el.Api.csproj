@@ -8,6 +8,8 @@
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
     <!-- Override the vulnerable 2.0.0 dependency (GHSA-v5pm-xwqc-g5wc). -->
     <PackageReference Include="Microsoft.OpenApi" />
+    <!-- Design-time only: lets dotnet-ef use the API as startup project. Not deployed. -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" PrivateAssets="all" />
   </ItemGroup>
 
   <ItemGroup>
