@@ -7,7 +7,7 @@ public static class ApiDocumentationExtensions
 {
     public static IServiceCollection AddApiDocumentation(this IServiceCollection services)
     {
-        services.AddOpenApi(options =>
+        services.AddOpenApi("v1", options =>
         {
             options.AddDocumentTransformer((document, _, _) =>
             {
@@ -25,7 +25,7 @@ public static class ApiDocumentationExtensions
                     if (document.Components.Schemas is not { } schemas || !schemas.TryGetValue(name, out var item)
                         || item is not OpenApiSchema schema) continue;
                     schema.Properties ??= new Dictionary<string, IOpenApiSchema>();
-                    schema.Description = "Shared API error contract for HTTP 400, 401, 403, 404 and business-state 409 conflicts; validation errors also include field errors.";
+                    schema.Description = "API error with code, message and correlationId; validation errors also include field errors.";
                     schema.Required ??= new HashSet<string>();
                     foreach (var field in new[] { "code", "message", "correlationId" })
                     {

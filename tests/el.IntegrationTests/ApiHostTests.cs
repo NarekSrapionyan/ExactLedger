@@ -33,6 +33,21 @@ public sealed class ApiHostTests
         using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         Assert.Equal("ExactLedger API", document.RootElement.GetProperty("info").GetProperty("title").GetString());
         Assert.Equal("v1", document.RootElement.GetProperty("info").GetProperty("version").GetString());
+        var paths = document.RootElement.GetProperty("paths");
+        foreach (var (path, method) in new[]
+        {
+            ("/v1/auth/login", "post"), ("/v1/auth/me", "get"),
+            ("/v1/ledger/accounts/{accountId}/balance", "get"),
+            ("/v1/ledger/trial-balance", "get"), ("/v1/audit-events", "get"),
+        })
+        {
+            var operation = paths.GetProperty(path).GetProperty(method);
+            Assert.True(operation.TryGetProperty("summary", out var summary) && !string.IsNullOrWhiteSpace(summary.GetString()), path);
+        }
+        var schemas = document.RootElement.GetProperty("components").GetProperty("schemas");
+        Assert.Equal("Credentials for a seeded identity.", schemas.GetProperty("LoginRequest").GetProperty("description").GetString());
+        Assert.Equal("Token lifetime in seconds.", schemas.GetProperty("AccessTokenResponse").GetProperty("properties")
+            .GetProperty("expiresIn").GetProperty("description").GetString());
     }
 
     [Fact]

@@ -3,7 +3,15 @@ using el.Application.Security;
 
 namespace el.Api.Authentication;
 
+/// <summary>Credentials for a seeded identity.</summary>
+/// <param name="Username">Seeded username.</param>
+/// <param name="Password">Identity password.</param>
 public sealed record LoginRequest(string? Username, string? Password);
+/// <summary>A bearer token valid for 30 minutes.</summary>
+/// <param name="AccessToken">Signed JWT.</param>
+/// <param name="TokenType">Bearer.</param>
+/// <param name="ExpiresIn">Token lifetime in seconds.</param>
+/// <param name="ExpiresAtUtc">Expiry time in UTC.</param>
 public sealed record AccessTokenResponse(string AccessToken, string TokenType, int ExpiresIn, DateTimeOffset ExpiresAtUtc);
 
 public static class AuthenticationEndpoints
@@ -12,14 +20,14 @@ public static class AuthenticationEndpoints
     {
         endpoints.MapPost("/v1/auth/login", LoginAsync).WithName("Login").AllowAnonymous().RequireRateLimiting("login")
             .Produces<AccessTokenResponse>().ProducesValidationProblem().ProducesProblem(401).ProducesProblem(429)
-            .WithTags("Authentication").WithSummary("Authenticate a provisioned educational identity.");
-        endpoints.MapGet("/v1/auth/me", (HttpContext context) => Results.Ok(RequestIdentity.Get(context)))
-            .RequireAuthorization().WithTags("Authentication")
-            .WithSummary("Return the authenticated identity and its server-assigned bindings.");
+            .WithTags("Authentication");
+        endpoints.MapGet("/v1/auth/me", Me)
+            .RequireAuthorization().Produces<AuthenticatedIdentity>().ProducesProblem(401).WithTags("Authentication");
         return endpoints;
     }
 
-    private static async Task<IResult> LoginAsync(LoginRequest request, HttpContext context,
+    /// <summary>Sign in and receive a 30-minute bearer token.</summary>
+    public static async Task<IResult> LoginAsync(LoginRequest request, HttpContext context,
         IIdentityAuthenticator identities, IAccessTokenIssuer tokens, CancellationToken cancellationToken)
     {
         context.Response.Headers.CacheControl = "no-store";
@@ -38,4 +46,7 @@ public static class AuthenticationEndpoints
         var token = tokens.Issue(identity);
         return Results.Ok(new AccessTokenResponse(token.Value, "Bearer", 1800, token.ExpiresAtUtc));
     }
+
+    /// <summary>Read your identity, roles and ownership bindings.</summary>
+    public static IResult Me(HttpContext context) => Results.Ok(RequestIdentity.Get(context));
 }

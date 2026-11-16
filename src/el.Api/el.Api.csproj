@@ -2,6 +2,9 @@
 
   <PropertyGroup>
     <UserSecretsId>ExactLedger-el.Api-8025a407-6c86-4be8-9c87-d8794a1a54d1</UserSecretsId>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- Document HTTP contracts without requiring comments on every public helper. -->
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

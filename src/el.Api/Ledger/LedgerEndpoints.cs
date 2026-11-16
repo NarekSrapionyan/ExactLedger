@@ -10,8 +10,13 @@ using el.Domain.Ledger;
 
 namespace el.Api.Ledger;
 
+/// <summary>An exact currency amount, including totals beyond Int64.</summary>
+/// <param name="Amount">Decimal string with the currency's exact fractional digits.</param>
+/// <param name="Currency">USD, JPY or KWD.</param>
 public sealed record AmountResponse(string Amount, string Currency);
+/// <summary>Account totals; net debit is debits minus credits.</summary>
 public sealed record AccountBalanceResponse(Guid AccountId, AmountResponse DebitTotal, AmountResponse CreditTotal, AmountResponse NetDebit);
+/// <summary>Exact debit and credit totals for one currency.</summary>
 public sealed record TrialBalanceResponse(string Currency, AmountResponse DebitTotal, AmountResponse CreditTotal, bool IsBalanced);
 
 public static class LedgerEndpoints
@@ -21,19 +26,20 @@ public static class LedgerEndpoints
         endpoints.MapGet("/v1/ledger/accounts/{accountId}/balance", AccountBalanceAsync)
             .RequireAuthorization(Permission.ReadBalancesAndPayouts.ToString())
             .Produces<AccountBalanceResponse>().ProducesProblem(401).ProducesProblem(403).ProducesProblem(404)
-            .WithTags("Ledger").WithSummary("Read an account balance; Payee access is restricted to its stored owner.");
+            .WithTags("Ledger");
         endpoints.MapGet("/v1/ledger/trial-balance", TrialBalanceAsync)
             .RequireAuthorization(Permission.ReadLedger.ToString())
             .Produces<IReadOnlyList<TrialBalanceResponse>>().ProducesValidationProblem().ProducesProblem(401).ProducesProblem(403)
-            .WithTags("Ledger").WithSummary("Read the current all-time trial balance per currency (Finance/Auditor).");
+            .WithTags("Ledger");
         endpoints.MapGet("/v1/audit-events", ReadAuditAsync)
             .RequireAuthorization(Permission.ReadAudit.ToString())
             .Produces<IReadOnlyList<AuditEvent>>().ProducesValidationProblem().ProducesProblem(401).ProducesProblem(403)
-            .WithTags("Audit").WithSummary("Read a page of immutable business audit metadata (Finance/Admin/Auditor).");
+            .WithTags("Audit");
         return endpoints;
     }
 
-    private static async Task<IResult> AccountBalanceAsync(Guid accountId, HttpContext context,
+    /// <summary>Read an account balance (Finance/Auditor or the owning Payee).</summary>
+    public static async Task<IResult> AccountBalanceAsync(Guid accountId, HttpContext context,
         ILedgerBalanceQueries queries, CancellationToken cancellationToken)
     {
         if (accountId == Guid.Empty) return Results.Problem(ApiErrorResponses.Create(context, 404));
@@ -44,7 +50,8 @@ public static class LedgerEndpoints
             Format(balance.CreditTotal, balance.Currency), Format(balance.NetDebit, balance.Currency)));
     }
 
-    private static async Task<IResult> TrialBalanceAsync(string? currency, HttpContext context,
+    /// <summary>Read all-time trial balances by currency (Finance/Auditor).</summary>
+    public static async Task<IResult> TrialBalanceAsync(string? currency, HttpContext context,
         ILedgerBalanceQueries queries, CancellationToken cancellationToken)
     {
         var code = CurrencyReferenceData.Catalog.Definitions.Select(definition => definition.Code)
@@ -56,7 +63,8 @@ public static class LedgerEndpoints
             Format(balance.DebitTotal, balance.Currency), Format(balance.CreditTotal, balance.Currency), balance.IsBalanced)));
     }
 
-    private static async Task<IResult> ReadAuditAsync(int? offset, int? limit, HttpContext context,
+    /// <summary>Read audit events (Finance/Admin/Auditor; up to 100 per page).</summary>
+    public static async Task<IResult> ReadAuditAsync(int? offset, int? limit, HttpContext context,
         IAuditQueries queries, CancellationToken cancellationToken)
     {
         var start = offset ?? 0;
