@@ -15,10 +15,13 @@ $project = 'exactledger-smoke-' + [Guid]::NewGuid().ToString('N').Substring(0, 1
 $envFile = Join-Path $root "artifacts/$project.env"
 $appPassword = [Guid]::NewGuid().ToString('N')
 $apiPort = Get-FreePort
+$seedPassword = 'seed_' + [Guid]::NewGuid().ToString('N')
 $settings = [ordered]@{
     POSTGRES_PASSWORD = [Guid]::NewGuid().ToString('N')
     MIGRATION_PASSWORD = [Guid]::NewGuid().ToString('N')
     APP_PASSWORD = $appPassword
+    SEED_PASSWORD = $seedPassword
+    JWT_SIGNING_KEY = [Convert]::ToBase64String(([Guid]::NewGuid().ToByteArray() + [Guid]::NewGuid().ToByteArray()))
     POSTGRES_PORT = Get-FreePort
     API_PORT = $apiPort
 }
@@ -64,6 +67,11 @@ try {
     Wait-Api
     $openApi = Invoke-RestMethod "http://127.0.0.1:$apiPort/openapi/v1.json"
     if ($openApi.info.title -ne 'ExactLedger API') { throw 'Unexpected OpenAPI document.' }
+    $login = Invoke-RestMethod "http://127.0.0.1:$apiPort/v1/auth/login" -Method Post -ContentType 'application/json' `
+        -Body (@{ username = 'finance'; password = $seedPassword } | ConvertTo-Json)
+    $headers = @{ Authorization = 'Bearer ' + $login.accessToken }
+    $auditEvents = Invoke-RestMethod "http://127.0.0.1:$apiPort/v1/audit-events" -Headers $headers
+    if (@($auditEvents).Count -ne 9) { throw 'Expected exactly nine identity provisioning audit events.' }
     $uid = Invoke-Compose exec -T api id -u
     if (($uid -join '').Trim() -eq '0') { throw 'API must not run as root.' }
 
@@ -78,6 +86,7 @@ try {
     Invoke-Compose up --detach
     Wait-Api
     Assert-RuntimeSql "SELECT count(*) FROM ledger.parties WHERE name = 'Synthetic Compose Smoke'" '1'
+    Assert-RuntimeSql "SELECT count(*) FROM ledger.audit_events" '9'
     Write-Output 'Compose smoke check passed: migrations, roles, API and persistent data.'
 }
 catch {

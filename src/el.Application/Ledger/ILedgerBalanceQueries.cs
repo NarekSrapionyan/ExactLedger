@@ -8,7 +8,7 @@ namespace el.Application.Ledger;
 /// Exact totals of the finalized lines of one account. Totals are BigInteger minor units and are
 /// never narrowed into Money: an account total can exceed Money's per-value limit.
 /// </summary>
-public sealed record AccountBalance(AccountId AccountId, CurrencyCode Currency, BigInteger DebitTotal, BigInteger CreditTotal)
+public sealed record AccountBalance(AccountId AccountId, CurrencyCode Currency, BigInteger DebitTotal, BigInteger CreditTotal, PartyId? PartyId = null)
 {
     /// <summary>Debits minus credits (debit-positive).</summary>
     public BigInteger NetDebit => DebitTotal - CreditTotal;

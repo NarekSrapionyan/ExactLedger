@@ -51,7 +51,7 @@ public sealed class ApiHostTests
 
     private static WebApplicationFactory<Program> CreateFactory(string environment) =>
         new WebApplicationFactory<Program>()
-            .WithWebHostBuilder(builder => builder.UseEnvironment(environment));
+            .WithWebHostBuilder(builder => builder.UseEnvironment(environment).WithTestAuthentication());
 
     private static HttpClient CreateClient(WebApplicationFactory<Program> factory) =>
         factory.CreateClient(new WebApplicationFactoryClientOptions

@@ -1,8 +1,15 @@
 using el.Api.Contracts;
+using el.Api.Errors;
 using el.Domain.Common;
 using el.Infrastructure;
+using el.Api.Authentication;
+using el.Api.Ledger;
+using el.Api.Documentation;
 
-var builder = WebApplication.CreateBuilder(args);
+var seedIdentities = args.Contains("--seed-identities", StringComparer.Ordinal);
+var hostArguments = args.Where(argument => argument != "--seed-identities").ToArray();
+var builder = WebApplication.CreateBuilder(hostArguments);
+builder.Logging.AddJsonConsole(options => options.IncludeScopes = true);
 
 // Optional local overrides; user secrets, environment variables and CLI arguments win.
 builder.Configuration.AddJsonFile("appsettings.Local.json", optional: true, reloadOnChange: true);
@@ -12,9 +19,16 @@ if (builder.Environment.IsDevelopment())
     builder.Configuration.AddUserSecrets<Program>(optional: true);
 }
 
-builder.Configuration.AddEnvironmentVariables().AddCommandLine(args);
+builder.Configuration.AddEnvironmentVariables().AddCommandLine(hostArguments);
 
-builder.Services.AddProblemDetails();
+if (seedIdentities)
+{
+    await IdentitySeedCommand.RunAsync(builder.Configuration);
+    return;
+}
+
+builder.Services.AddApiErrorHandling();
+builder.Services.AddTokenAuthentication();
 
 // Money is exchanged as {"amount":"250.00","currency":"USD"}; JSON numbers are rejected.
 // Until versioned reference selection exists (BE-010/BE-011), the seeded version is used.
@@ -27,20 +41,11 @@ builder.Services.AddInfrastructure(provider => provider.GetRequiredService<IConf
     .GetConnectionString(InfrastructureServiceCollectionExtensions.RuntimeConnectionStringName));
 
 builder.Services.AddHealthChecks();
-builder.Services.AddOpenApi(options =>
-{
-    options.AddDocumentTransformer((document, _, _) =>
-    {
-        document.Info.Title = "ExactLedger API";
-        document.Info.Version = "v1";
-        return Task.CompletedTask;
-    });
-});
+builder.Services.AddApiDocumentation();
 
 var app = builder.Build();
 
-app.UseExceptionHandler();
-app.UseStatusCodePages();
+app.UseApiErrorHandling();
 
 if (!app.Environment.IsDevelopment())
 {
@@ -48,14 +53,17 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseApiSecurity();
+app.MapIdentityEndpoints();
+app.MapLedgerEndpoints();
 
 if (app.Environment.IsDevelopment())
 {
-    app.MapOpenApi();
+    app.MapOpenApi().AllowAnonymous();
 }
 
 // Process liveness only; database and external dependency readiness is separate.
-app.MapHealthChecks("/health/live");
+app.MapHealthChecks("/health/live").AllowAnonymous();
 
 app.Run();
 
