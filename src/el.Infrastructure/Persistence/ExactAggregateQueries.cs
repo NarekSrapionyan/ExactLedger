@@ -32,10 +32,17 @@ public static class ExactAggregateQueries
 
         var text = await database.SqlQuery<string?>(wrapped).SingleAsync(cancellationToken);
 
-        if (text is null)
-        {
-            return BigInteger.Zero;
-        }
+        return text is null ? BigInteger.Zero : ParseExactInteger(text);
+    }
+
+    /// <summary>
+    /// Parses the text form of a PostgreSQL NUMERIC integer (for example <c>SUM(...)::text</c> in a
+    /// row-based query) into an exact BigInteger. Culture-independent; never goes through long or decimal.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">The text is not an integer.</exception>
+    public static BigInteger ParseExactInteger(string text)
+    {
+        ArgumentNullException.ThrowIfNull(text);
 
         return BigInteger.TryParse(text, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out var value)
             ? value

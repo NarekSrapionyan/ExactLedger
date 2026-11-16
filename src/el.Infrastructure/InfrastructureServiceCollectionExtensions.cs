@@ -1,4 +1,5 @@
 using el.Application.Abstractions;
+using el.Application.Ledger;
 using el.Infrastructure.Persistence;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -27,6 +28,11 @@ public static class InfrastructureServiceCollectionExtensions
             (provider, options) => ExactLedgerDbContextOptions.Configure(options, runtimeConnectionString(provider)));
         services.AddScoped<IUnitOfWork, EfUnitOfWork>();
         services.AddScoped<IJournalEntryStore, JournalEntryStore>();
+
+        services.AddScoped<IMonetaryOperationLock, MonetaryOperationLock>();
+        services.AddScoped<IJournalAccountVerifier, JournalAccountVerifier>();
+        services.AddScoped<ILedgerBalanceQueries, LedgerBalanceQueries>();
+        services.AddScoped<JournalPostingService>();
 
         return services;
     }

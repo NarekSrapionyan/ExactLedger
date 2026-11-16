@@ -105,6 +105,12 @@ Database tests use Testcontainers and need Docker. `PostgreSqlFixture` starts on
 
 Mark database tests with `[Collection(PostgreSqlCollection.Name)]` and `[Trait("Category", PostgreSqlCollection.Category)]`. If Docker cannot pull images (for example behind a proxy), pull `PostgreSqlFixture.Image` once while connected, or run the rest without Docker:
 
+## Atomic posting and monetary lock (BE-008)
+
+Journal entries are posted through `JournalPostingService`: one unit of work takes the shared monetary-operation lock (a transaction-scoped PostgreSQL advisory lock), re-checks that the accounts are active with `FOR SHARE`, writes and finalizes the entry, and commits. Any failure rolls everything back. Balances and the per-currency trial balance are read from finalized lines with exact `NUMERIC` sums parsed into `BigInteger`. Lock scope, limits, retry behaviour and sign conventions are in [0009](../architecture/0009-atomic-posting-and-monetary-lock.md).
+
+No schema or privilege change: `pg_advisory_xact_lock` is executable by PUBLIC, and `FOR SHARE` on `accounts` uses the runtime role's existing `UPDATE (status)` privilege. The new tests are PostgreSQL tests (Docker needed), in `tests/el.IntegrationTests/Ledger`.
+
 ```sh
 dotnet test ExactLedger.sln -c Release --filter "Category!=PostgreSQL"
 ```
