@@ -2,6 +2,10 @@ using el.Application.Abstractions;
 using el.Application.Ledger;
 using el.Infrastructure.Persistence;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using el.Application.Audit;
+using el.Application.Security;
+using el.Infrastructure.Security;
 
 namespace el.Infrastructure;
 
@@ -33,6 +37,14 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IJournalAccountVerifier, JournalAccountVerifier>();
         services.AddScoped<ILedgerBalanceQueries, LedgerBalanceQueries>();
         services.AddScoped<JournalPostingService>();
+        services.TryAddSingleton(TimeProvider.System);
+        services.AddScoped(_ => new AuditContext("system", Guid.NewGuid().ToString("N")));
+        services.AddScoped<EfAuditTrail>();
+        services.AddScoped<IAuditTrail>(provider => provider.GetRequiredService<EfAuditTrail>());
+        services.AddScoped<IAuditQueries>(provider => provider.GetRequiredService<EfAuditTrail>());
+        services.AddSingleton<IdentityCredentials>();
+        services.AddScoped<IIdentityAuthenticator, DatabaseIdentityAuthenticator>();
+        services.AddScoped<IIdentitySeeder, IdentitySeeder>();
 
         return services;
     }

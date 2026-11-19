@@ -1,5 +1,6 @@
 using el.Application.Abstractions;
 using el.Domain.Ledger;
+using el.Application.Audit;
 
 namespace el.Application.Ledger;
 
@@ -13,17 +14,20 @@ public sealed class JournalPostingService
     private readonly IMonetaryOperationLock _monetaryLock;
     private readonly IJournalAccountVerifier _accountVerifier;
     private readonly IJournalEntryStore _journalEntries;
+    private readonly IAuditTrail _audit;
 
     public JournalPostingService(
         IUnitOfWork unitOfWork,
         IMonetaryOperationLock monetaryLock,
         IJournalAccountVerifier accountVerifier,
-        IJournalEntryStore journalEntries)
+        IJournalEntryStore journalEntries,
+        IAuditTrail audit)
     {
         _unitOfWork = unitOfWork;
         _monetaryLock = monetaryLock;
         _accountVerifier = accountVerifier;
         _journalEntries = journalEntries;
+        _audit = audit;
     }
 
     /// <summary>
@@ -59,5 +63,6 @@ public sealed class JournalPostingService
         await _accountVerifier.EnsurePostableAsync(accountIds, cancellationToken);
 
         await _journalEntries.AddAsync(entry, cancellationToken);
+        await _audit.RecordAsync("journal.posted", entry.Id.ToString(), cancellationToken);
     }
 }

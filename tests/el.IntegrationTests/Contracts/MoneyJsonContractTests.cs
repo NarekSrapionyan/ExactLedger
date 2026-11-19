@@ -154,7 +154,7 @@ public sealed class MoneyJsonContractTests
     [Fact]
     public async Task Api_json_options_use_the_money_contract()
     {
-        await using var factory = new WebApplicationFactory<Program>();
+        await using var factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder => builder.WithTestAuthentication());
 
         var options = factory.Services.GetRequiredService<IOptions<HttpJsonOptions>>().Value.SerializerOptions;
 

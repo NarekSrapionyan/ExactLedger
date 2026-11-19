@@ -34,6 +34,23 @@ services:
         condition: service_healthy
     restart: "no"
 
+  seed:
+    profiles: [tools, app]
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: api
+    entrypoint: ["dotnet", "el.Api.dll", "--seed-identities"]
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__ExactLedgerMigrations: >-
+        Host=postgres;Database=exactledger;Username=exactledger_migrations;Password="${MIGRATION_PASSWORD:?Set MIGRATION_PASSWORD in .env}"
+      Authentication__SeedPassword: ${SEED_PASSWORD:?Set a local SEED_PASSWORD of at least 16 characters in .env}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: "no"
+
   api:
     profiles: [app]
     build:
@@ -43,12 +60,15 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_HTTP_PORTS: "8080"
+      Authentication__Jwt__Issuer: ExactLedger
+      Authentication__Jwt__Audience: ExactLedger.Clients
+      Authentication__Jwt__SigningKey: ${JWT_SIGNING_KEY:?Set a base64 JWT_SIGNING_KEY with at least 32 random bytes in .env}
       ConnectionStrings__ExactLedger: >-
         Host=postgres;Database=exactledger;Username=exactledger_app;Password="${APP_PASSWORD:?Set APP_PASSWORD in .env}"
     ports:
       - "127.0.0.1:${API_PORT:-8080}:8080"
     depends_on:
-      migrate:
+      seed:
         condition: service_completed_successfully
 
 volumes:

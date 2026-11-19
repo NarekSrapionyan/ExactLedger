@@ -17,7 +17,7 @@ public sealed class LedgerQueryResultsTests
     [InlineData(30, 100, EntrySide.Credit, 70)]
     public void OnNormalSide_is_positive_on_the_normal_side(long debit, long credit, EntrySide side, long expected)
     {
-        var balance = new AccountBalance(AnyAccount, CurrencyReferenceData.Usd, debit, credit);
+        var balance = new AccountBalance(AnyAccount, CurrencyReferenceData.Usd, debit, credit, AccountType.Clearing);
 
         Assert.Equal(new BigInteger(expected), balance.OnNormalSide(side));
         Assert.Equal(new BigInteger(debit - credit), balance.NetDebit);
@@ -26,7 +26,7 @@ public sealed class LedgerQueryResultsTests
     [Fact]
     public void OnNormalSide_rejects_an_undefined_side()
     {
-        var balance = new AccountBalance(AnyAccount, CurrencyReferenceData.Usd, 1, 1);
+        var balance = new AccountBalance(AnyAccount, CurrencyReferenceData.Usd, 1, 1, AccountType.Clearing);
 
         Assert.Throws<ArgumentOutOfRangeException>(() => balance.OnNormalSide(default));
     }

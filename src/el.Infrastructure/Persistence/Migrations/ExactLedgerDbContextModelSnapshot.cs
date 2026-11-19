@@ -23,6 +23,47 @@ namespace el.Infrastructure.Persistence.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("el.Application.Audit.AuditEvent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ActorId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("actor_id");
+
+                    b.Property<string>("CorrelationId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("correlation_id");
+
+                    b.Property<DateTimeOffset>("OccurredAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("occurred_at_utc");
+
+                    b.Property<string>("Operation")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("operation");
+
+                    b.Property<string>("TargetId")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("target_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OccurredAtUtc", "Id");
+
+                    b.ToTable("audit_events", "ledger");
+                });
+
             modelBuilder.Entity("el.Domain.Common.CurrencyDefinition", b =>
                 {
                     b.Property<string>("Code")
@@ -590,6 +631,61 @@ namespace el.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("el.Infrastructure.Security.IdentityRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ClientId")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("client_id");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("boolean")
+                        .HasColumnName("enabled");
+
+                    b.Property<Guid?>("PartyId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("party_id");
+
+                    b.Property<string>("PasswordHash")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("password_hash");
+
+                    b.PrimitiveCollection<string[]>("Roles")
+                        .IsRequired()
+                        .HasColumnType("text[]")
+                        .HasColumnName("roles");
+
+                    b.Property<string>("Username")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("username");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PartyId");
+
+                    b.HasIndex("Username")
+                        .IsUnique();
+
+                    b.ToTable("identities", "ledger", t =>
+                        {
+                            t.HasCheckConstraint("ck_identities_client", "NOT ('Integrator' = ANY(roles)) OR (client_id IS NOT NULL AND btrim(client_id) <> '')");
+
+                            t.HasCheckConstraint("ck_identities_party", "NOT ('Payee' = ANY(roles)) OR party_id IS NOT NULL");
+
+                            t.HasCheckConstraint("ck_identities_roles", "cardinality(roles) > 0 AND array_position(roles, NULL) IS NULL AND roles <@ ARRAY['Integrator','FinanceOperator','ConfigurationAdministrator','Payee','Auditor','Scheduler']::text[]");
+
+                            t.HasCheckConstraint("ck_identities_username", "username ~ '^[a-z0-9][a-z0-9._-]{2,63}$'");
+                        });
+                });
+
             modelBuilder.Entity("el.Domain.Common.CurrencyDefinition", b =>
                 {
                     b.HasOne("el.Infrastructure.Persistence.KnownCurrency", null)
@@ -650,6 +746,14 @@ namespace el.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_journal_lines_entry");
+                });
+
+            modelBuilder.Entity("el.Infrastructure.Security.IdentityRecord", b =>
+                {
+                    b.HasOne("el.Domain.Ledger.Party", null)
+                        .WithMany()
+                        .HasForeignKey("PartyId")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 #pragma warning restore 612, 618
         }

@@ -43,7 +43,7 @@ public sealed class ApiPersistenceTests(PostgreSqlFixture database)
     {
         var connectionString = await database.CreateDatabaseAsync();
         await using var factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
-            builder.ConfigureAppConfiguration((_, configuration) => configuration.AddInMemoryCollection(
+            builder.WithTestAuthentication().ConfigureAppConfiguration((_, configuration) => configuration.AddInMemoryCollection(
                 new Dictionary<string, string?> { ["ConnectionStrings:ExactLedger"] = connectionString })));
 
         await using var scope = factory.Services.CreateAsyncScope();

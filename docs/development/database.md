@@ -48,6 +48,19 @@ Journal rows are mapped as persistence records (`JournalEntryRecord`, `JournalLi
 
 The SQLSTATE codes are constants in `LedgerDatabase`.
 
+## Identities and audit (BE-009)
+
+`identities` stores synthetic usernames, salted password hashes, known role arrays,
+client/party bindings and enabled state. Only the trusted provisioning connection
+can modify it; the runtime role has SELECT only. `audit_events` stores immutable
+actor, operation, target, UTC time and correlation metadata. Runtime privileges
+are SELECT/INSERT only, and UPDATE/DELETE/TRUNCATE triggers also protect audit
+history for the schema owner. Audit appends require the same active business
+transaction; `JournalPostingService` appends `journal.posted` atomically.
+
+See [authentication and provisioning](authentication.md) for seeded identities,
+JWT configuration, ownership enforcement, audit reads and safe errors/logging.
+
 ## Roles and privileges
 
 | Role | Purpose | Privileges |

@@ -8,7 +8,9 @@ does not require a locally installed .NET SDK.
 
 ## First setup
 
-Copy `.env.example` to `.env` and choose three separate local passwords. `.env` is
+Copy `.env.example` to `.env` and choose separate database passwords, a local
+identity seed password and a random JWT signing key. Generate the key as shown in
+[authentication setup](authentication.md). `.env` is
 ignored by Git and excluded from image builds. Use generated letters/digits/`_`/`-`
 passwords to avoid Compose and connection-string escaping. Change `POSTGRES_PORT`
 or `API_PORT` if the default port is already in use.
@@ -27,10 +29,11 @@ docker compose --profile app ps -a
 docker compose --profile app logs -f api
 ```
 
-Compose waits for PostgreSQL's TCP healthcheck, runs the migration service to a
-successful exit, then starts the API. `migrate` exiting with code 0 is expected.
+Compose waits for PostgreSQL's TCP healthcheck, runs migrations and trusted
+identity seeding to successful exits, then starts the API. `migrate` and `seed`
+exiting with code 0 is expected. The seed step uses the existing API image.
 An initialization or migration failure prevents the dependent API from starting;
-inspect `docker compose logs postgres migrate` rather than bypassing the failure.
+inspect `docker compose logs postgres migrate seed` rather than bypassing the failure.
 
 With the default ports:
 
@@ -65,13 +68,19 @@ confusing the two instances:
 ```sh
 docker compose --profile app stop api
 docker compose up -d postgres
-docker compose run --build --rm migrate
+docker compose run --build --rm seed
 ```
 
 Set the runtime connection with your `.env` APP_PASSWORD and POSTGRES_PORT values:
 
 ```sh
 dotnet user-secrets --project src/el.Api set "ConnectionStrings:ExactLedger" "Host=localhost;Port=5432;Database=exactledger;Username=exactledger_app;Password=<APP_PASSWORD from .env>"
+```
+
+Configure the issuer, audience and signing key in user secrets as described in
+[authentication setup](authentication.md) before `dotnet run`.
+
+```sh
 dotnet run --project src/el.Api
 ```
 
@@ -110,6 +119,8 @@ volume (mounted at `/var/lib/postgresql/data`, the PostgreSQL 17 layout; Postgre
 images use a different data directory, so revisit the mount when upgrading). The next startup keeps existing data and applies any pending migrations.
 Changing passwords in `.env` does not change roles in an existing database: update
 the database credentials explicitly, or reset disposable local data as follows.
+SEED_PASSWORD is different: the trusted seed command updates seeded identity hashes
+when changed and preserves disabled accounts. JWT key rotation invalidates existing signatures.
 
 **This reset deletes this Compose project's local database and all its data:**
 
@@ -122,7 +133,7 @@ docker compose --profile app up --build -d
 
 `scripts/Test-LocalCompose.ps1` builds and starts a separate temporary Compose
 project with generated credentials and free host ports. It verifies migrations,
-API liveness/OpenAPI, the non-root API user, runtime-role restrictions, and that
+API liveness/OpenAPI, seeded login and an authenticated audit read, the non-root API user, runtime-role restrictions, and that
 an inserted row survives container recreation. It removes only its own containers,
 images, network, volume and temporary environment file afterwards.
 
