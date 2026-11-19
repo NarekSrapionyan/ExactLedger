@@ -49,10 +49,21 @@ app.UseApiErrorHandling();
 
 if (!app.Environment.IsDevelopment())
 {
+    app.Use(async (context, next) =>
+    {
+        if (!context.Request.IsHttps && context.Request.Path != "/health/live")
+        {
+            await ApiErrorResponses.WriteAsync(context, 400, "HTTPS_REQUIRED");
+            return;
+        }
+        await next(context);
+    });
     app.UseHsts();
 }
-
-app.UseHttpsRedirection();
+else
+{
+    app.UseHttpsRedirection();
+}
 app.UseApiSecurity();
 app.MapIdentityEndpoints();
 app.MapLedgerEndpoints();

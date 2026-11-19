@@ -18,11 +18,11 @@ namespace el.IntegrationTests;
 public sealed class ApiErrorTests
 {
     [Theory]
-    [InlineData(400, "invalid_request")]
-    [InlineData(401, "unauthenticated")]
-    [InlineData(403, "forbidden")]
-    [InlineData(404, "not_found")]
-    [InlineData(409, "conflict")]
+    [InlineData(400, "INVALID_REQUEST")]
+    [InlineData(401, "UNAUTHENTICATED")]
+    [InlineData(403, "FORBIDDEN")]
+    [InlineData(404, "NOT_FOUND")]
+    [InlineData(409, "CONFLICT")]
     public async Task Empty_error_responses_have_the_shared_contract_and_a_server_correlation_id(int status, string code)
     {
         using var server = CreateServer(context =>
@@ -37,10 +37,10 @@ public sealed class ApiErrorTests
     }
 
     [Theory]
-    [InlineData("lock", 409, "ledger_busy")]
-    [InlineData("account", 409, "account_not_postable")]
+    [InlineData("lock", 503, "LEDGER_BUSY")]
+    [InlineData("account", 409, "ACCOUNT_NOT_POSTABLE")]
     [InlineData("journal", 400, "LEDGER_UNBALANCED")]
-    [InlineData("json", 400, "invalid_request")]
+    [InlineData("json", 400, "INVALID_REQUEST")]
     public async Task Known_failures_have_stable_public_codes(string kind, int status, string code)
     {
         var failure = kind switch
@@ -54,6 +54,8 @@ public sealed class ApiErrorTests
         using var client = server.GetTestClient();
         using var response = await client.GetAsync("/");
         await AssertProblemAsync(response, status, code);
+        if (kind == "lock") Assert.Equal(TimeSpan.FromSeconds(1), response.Headers.RetryAfter?.Delta);
+        else Assert.Null(response.Headers.RetryAfter);
     }
 
     [Fact]
@@ -64,7 +66,7 @@ public sealed class ApiErrorTests
         using var server = CreateServer(_ => throw new InvalidOperationException(secret), logs);
         using var client = server.GetTestClient();
         using var response = await client.GetAsync("/?password=" + Uri.EscapeDataString(secret));
-        await AssertProblemAsync(response, 500, "internal_error");
+        await AssertProblemAsync(response, 500, "INTERNAL_ERROR");
         var body = await response.Content.ReadAsStringAsync();
         Assert.DoesNotContain(secret, body, StringComparison.Ordinal);
         Assert.DoesNotContain(logs.Messages, message => message.Contains(secret, StringComparison.Ordinal));

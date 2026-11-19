@@ -9,6 +9,7 @@ using el.Infrastructure.Persistence;
 using el.IntegrationTests.Persistence;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
+using System.Text.RegularExpressions;
 
 namespace el.IntegrationTests;
 
@@ -17,6 +18,19 @@ namespace el.IntegrationTests;
 public sealed class BusinessAuditTests(PostgreSqlFixture database)
 {
     private sealed class InjectedFailure : Exception;
+
+    [Fact]
+    public async Task Migrated_identity_role_constraint_matches_the_application_roles_exactly()
+    {
+        await using var host = await IdentityApiHost.CreateAsync(database);
+        var definition = await host.ScalarAsync<string>("""
+            SELECT pg_get_constraintdef(oid) FROM pg_constraint
+            WHERE conrelid = 'ledger.identities'::regclass AND conname = 'ck_identities_roles'
+            """);
+        var storedRoles = Regex.Matches(definition, "'([^']+)'")
+            .Select(match => match.Groups[1].Value).Order(StringComparer.Ordinal).ToArray();
+        Assert.Equal(IdentityRoles.All.Order(StringComparer.Ordinal).ToArray(), storedRoles);
+    }
 
     [Fact]
     public async Task Posting_and_actor_audit_commit_or_rollback_together_as_the_runtime_role()

@@ -73,8 +73,10 @@ public sealed class LedgerBalanceQueryTests
         Assert.Equal(new BigInteger(25000), debitSide.DebitTotal);
         Assert.Equal(BigInteger.Zero, debitSide.CreditTotal);
         Assert.Equal(new BigInteger(25000), debitSide.OnNormalSide(EntrySide.Debit));
+        Assert.Equal(EntrySide.Debit, debitSide.NormalSide);
         Assert.Equal(new BigInteger(-25000), creditSide.NetDebit);
         Assert.Equal(new BigInteger(25000), creditSide.OnNormalSide(EntrySide.Credit));
+        Assert.Equal(EntrySide.Credit, creditSide.NormalSide);
     }
 
     [Fact]

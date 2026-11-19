@@ -7,6 +7,7 @@ namespace el.Infrastructure.Persistence;
 
 internal sealed class BalanceRow
 {
+    public int AccountType { get; set; }
     public Guid? PartyId { get; set; }
     public string Currency { get; set; } = string.Empty;
 
@@ -33,7 +34,7 @@ internal sealed class LedgerBalanceQueries : ILedgerBalanceQueries
         var credit = (int)EntrySide.Credit;
 
         var rows = await _dbContext.Database.SqlQuery<BalanceRow>($"""
-            SELECT a.currency AS "Currency", a.party_id AS "PartyId",
+            SELECT a.currency AS "Currency", a.party_id AS "PartyId", a.type AS "AccountType",
                    COALESCE(SUM(l.amount_minor) FILTER (WHERE l.side = {debit}), 0)::text AS "DebitTotal",
                    COALESCE(SUM(l.amount_minor) FILTER (WHERE l.side = {credit}), 0)::text AS "CreditTotal"
             FROM ledger.accounts a
@@ -54,6 +55,7 @@ internal sealed class LedgerBalanceQueries : ILedgerBalanceQueries
                 CurrencyCode.Parse(rows[0].Currency),
                 ExactAggregateQueries.ParseExactInteger(rows[0].DebitTotal),
                 ExactAggregateQueries.ParseExactInteger(rows[0].CreditTotal),
+                (AccountType)rows[0].AccountType,
                 rows[0].PartyId is { } partyId ? new el.Domain.Ledger.PartyId(partyId) : null);
     }
 
@@ -66,7 +68,7 @@ internal sealed class LedgerBalanceQueries : ILedgerBalanceQueries
         var code = currency?.ToString() ?? string.Empty;
 
         var rows = await _dbContext.Database.SqlQuery<BalanceRow>($"""
-            SELECT jl.currency AS "Currency", NULL::uuid AS "PartyId",
+            SELECT jl.currency AS "Currency", NULL::uuid AS "PartyId", 0 AS "AccountType",
                    COALESCE(SUM(jl.amount_minor) FILTER (WHERE jl.side = {debit}), 0)::text AS "DebitTotal",
                    COALESCE(SUM(jl.amount_minor) FILTER (WHERE jl.side = {credit}), 0)::text AS "CreditTotal"
             FROM ledger.journal_lines jl

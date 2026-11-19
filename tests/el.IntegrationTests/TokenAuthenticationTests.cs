@@ -55,7 +55,7 @@ public sealed class TokenAuthenticationTests
         using var response = await client.GetAsync("/authenticated");
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
         using var problem = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-        Assert.Equal("unauthenticated", problem.RootElement.GetProperty("code").GetString());
+        Assert.Equal("UNAUTHENTICATED", problem.RootElement.GetProperty("code").GetString());
     }
 
     [Fact]
@@ -70,7 +70,7 @@ public sealed class TokenAuthenticationTests
         Assert.Equal(HttpStatusCode.OK, allowed.StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, forbidden.StatusCode);
         using var problem = JsonDocument.Parse(await forbidden.Content.ReadAsStringAsync());
-        Assert.Equal("forbidden", problem.RootElement.GetProperty("code").GetString());
+        Assert.Equal("FORBIDDEN", problem.RootElement.GetProperty("code").GetString());
     }
 
     [Theory]
@@ -111,7 +111,7 @@ public sealed class TokenAuthenticationTests
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
         Assert.Contains(response.Headers.WwwAuthenticate, header => header.Scheme == "Bearer" && header.Parameter is null);
         using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-        Assert.Equal("unauthenticated", body.RootElement.GetProperty("code").GetString());
+        Assert.Equal("UNAUTHENTICATED", body.RootElement.GetProperty("code").GetString());
         Assert.True(body.RootElement.TryGetProperty("correlationId", out _));
     }
 

@@ -6,6 +6,9 @@ using System.Text.Json;
 using System.Text;
 using el.Api.Authentication;
 using el.Application.Security;
+using el.Application.Ledger;
+using el.Domain.Common;
+using el.Domain.Ledger;
 using el.Infrastructure;
 using el.Infrastructure.Persistence;
 using el.IntegrationTests.Persistence;
@@ -50,11 +53,11 @@ public sealed class AuthenticationApiTests(PostgreSqlFixture database)
         foreach (var (username, password) in new[] { ("not-a-user", IdentityApiHost.Password), ("finance", "incorrect") })
         {
             using var response = await host.Client.PostAsJsonAsync("/v1/auth/login", new { username, password });
-            await AssertErrorAsync(response, HttpStatusCode.Unauthorized, "invalid_credentials");
+            await AssertErrorAsync(response, HttpStatusCode.Unauthorized, "INVALID_CREDENTIALS");
         }
         await host.ExecuteAsync("UPDATE ledger.identities SET enabled = false WHERE username = 'finance'");
         using var disabled = await host.Client.PostAsJsonAsync("/v1/auth/login", new { username = "finance", password = IdentityApiHost.Password });
-        await AssertErrorAsync(disabled, HttpStatusCode.Unauthorized, "invalid_credentials");
+        await AssertErrorAsync(disabled, HttpStatusCode.Unauthorized, "INVALID_CREDENTIALS");
     }
 
     [Fact]
@@ -62,7 +65,7 @@ public sealed class AuthenticationApiTests(PostgreSqlFixture database)
     {
         await using var host = await IdentityApiHost.CreateAsync(database);
         using var response = await host.Client.PostAsJsonAsync("/v1/auth/login", new { username = "", password = "" });
-        await AssertErrorAsync(response, HttpStatusCode.BadRequest, "invalid_request");
+        await AssertErrorAsync(response, HttpStatusCode.BadRequest, "INVALID_REQUEST");
         using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         Assert.True(body.RootElement.GetProperty("errors").TryGetProperty("username", out _));
         Assert.True(body.RootElement.GetProperty("errors").TryGetProperty("password", out _));
@@ -79,7 +82,7 @@ public sealed class AuthenticationApiTests(PostgreSqlFixture database)
         using var content = new StringContent(body, Encoding.UTF8, "application/json");
         content.Headers.ContentLength = Encoding.UTF8.GetByteCount(body);
         using var response = await host.Client.PostAsync(path, content);
-        await AssertErrorAsync(response, HttpStatusCode.RequestEntityTooLarge, "request_rejected");
+        await AssertErrorAsync(response, HttpStatusCode.RequestEntityTooLarge, "REQUEST_REJECTED");
     }
 
     [Fact]
@@ -94,7 +97,7 @@ public sealed class AuthenticationApiTests(PostgreSqlFixture database)
                 last?.Dispose();
                 last = await host.Client.PostAsJsonAsync("/v1/auth/login", new { username = "", password = "" });
             }
-            await AssertErrorAsync(last!, HttpStatusCode.TooManyRequests, "rate_limited");
+            await AssertErrorAsync(last!, HttpStatusCode.TooManyRequests, "RATE_LIMITED");
         }
         finally { last?.Dispose(); }
     }
@@ -111,7 +114,7 @@ public sealed class AuthenticationApiTests(PostgreSqlFixture database)
             Assert.Equal(username is "finance" or "admin" or "auditor" or "demo-admin" ? HttpStatusCode.OK : HttpStatusCode.Forbidden, audit.StatusCode);
         }
         using var anonymous = await host.Client.GetAsync("/v1/ledger/trial-balance");
-        await AssertErrorAsync(anonymous, HttpStatusCode.Unauthorized, "unauthenticated");
+        await AssertErrorAsync(anonymous, HttpStatusCode.Unauthorized, "UNAUTHENTICATED");
     }
 
     [Fact]
@@ -125,9 +128,40 @@ public sealed class AuthenticationApiTests(PostgreSqlFixture database)
         using var body = JsonDocument.Parse(await ownBalance.Content.ReadAsStringAsync());
         Assert.Equal("0.00", body.RootElement.GetProperty("creditTotal").GetProperty("amount").GetString());
         using var denied = await host.GetAsAsync("payee-seller-1", $"/v1/ledger/accounts/{foreign}/balance?partyId={SyntheticSeed.SellerOne.Id.Value}");
-        await AssertErrorAsync(denied, HttpStatusCode.NotFound, "not_found");
+        await AssertErrorAsync(denied, HttpStatusCode.NotFound, "NOT_FOUND");
         using var finance = await host.GetAsAsync("finance", $"/v1/ledger/accounts/{foreign}/balance");
         Assert.Equal(HttpStatusCode.OK, finance.StatusCode);
+    }
+
+    [Fact]
+    public async Task Balance_uses_the_stored_account_normal_side_without_client_arithmetic()
+    {
+        await using var host = await IdentityApiHost.CreateAsync(database);
+        var clearing = SyntheticSeed.Accounts.Single(account => account.Code.Value == "CLEARING.BANK.USD");
+        var payable = SyntheticSeed.Accounts.Single(account => account.Code.Value == "PAYABLE.SELLER-1.USD");
+        await using var provider = new ServiceCollection().AddInfrastructure(host.RuntimeConnection).BuildServiceProvider();
+        await using var scope = provider.CreateAsyncScope();
+        var posting = scope.ServiceProvider.GetRequiredService<JournalPostingService>();
+        foreach (var (debit, credit, amount, expected) in new[]
+        {
+            (clearing, payable, 18445L, "184.45"),
+            (payable, clearing, 20000L, "-15.55"),
+        })
+        {
+            var money = Money.FromMinorUnits(amount, CurrencyReferenceData.Usd);
+            await posting.PostAsync(JournalEntry.Create(new JournalEntryId(Guid.NewGuid()),
+                JournalReference.Parse("BE009:BAL:" + amount), "Synthetic balance test",
+                [new(debit, EntrySide.Debit, money), new(credit, EntrySide.Credit, money)]), CancellationToken.None);
+            using var response = await host.GetAsAsync("payee-seller-1", $"/v1/ledger/accounts/{payable.Id.Value}/balance");
+            response.EnsureSuccessStatusCode();
+            using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+            Assert.Equal("Credit", body.RootElement.GetProperty("normalSide").GetString());
+            Assert.Equal(expected, body.RootElement.GetProperty("balance").GetProperty("amount").GetString());
+        }
+        using var debitResponse = await host.GetAsAsync("finance", $"/v1/ledger/accounts/{clearing.Id.Value}/balance");
+        using var debitBody = JsonDocument.Parse(await debitResponse.Content.ReadAsStringAsync());
+        Assert.Equal("Debit", debitBody.RootElement.GetProperty("normalSide").GetString());
+        Assert.Equal("-15.55", debitBody.RootElement.GetProperty("balance").GetProperty("amount").GetString());
     }
 
     [Fact]
@@ -142,6 +176,11 @@ public sealed class AuthenticationApiTests(PostgreSqlFixture database)
         Assert.Equal(0, root.GetProperty("paths").GetProperty("/v1/auth/login").GetProperty("post").GetProperty("security").GetArrayLength());
         Assert.Equal(JsonValueKind.Array, root.GetProperty("security")[0].GetProperty("Bearer").ValueKind);
         var errorSchema = root.GetProperty("components").GetProperty("schemas").GetProperty("ProblemDetails");
+        var schemas = root.GetProperty("components").GetProperty("schemas");
+        Assert.True(schemas.TryGetProperty("MeResponse", out _));
+        Assert.True(schemas.TryGetProperty("AuditEventResponse", out _));
+        Assert.False(schemas.TryGetProperty("AuthenticatedIdentity", out _));
+        Assert.False(schemas.TryGetProperty("AuditEvent", out _));
         foreach (var field in new[] { "code", "message", "correlationId" })
         {
             Assert.Equal("string", errorSchema.GetProperty("properties").GetProperty(field).GetProperty("type").GetString());
@@ -149,14 +188,21 @@ public sealed class AuthenticationApiTests(PostgreSqlFixture database)
         }
     }
 
-    [Fact]
-    public async Task Production_rejects_plain_HTTP_for_authenticated_API_routes()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Production_rejects_plain_HTTP_without_redirect_even_when_HTTPS_port_is_configured(bool login)
     {
         await using var host = await IdentityApiHost.CreateAsync(database, "Production");
-        using var request = new HttpRequestMessage(HttpMethod.Get, "http://localhost/v1/ledger/trial-balance");
+        using var request = new HttpRequestMessage(login ? HttpMethod.Post : HttpMethod.Get,
+            login ? "http://localhost/v1/auth/login" : "http://localhost/v1/ledger/trial-balance");
+        if (login) request.Content = JsonContent.Create(new { username = "finance", password = IdentityApiHost.Password });
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", await host.TokenAsync("finance"));
         using var response = await host.Client.SendAsync(request);
-        await AssertErrorAsync(response, HttpStatusCode.BadRequest, "https_required");
+        await AssertErrorAsync(response, HttpStatusCode.BadRequest, "HTTPS_REQUIRED");
+        Assert.Null(response.Headers.Location);
+        using var health = await host.Client.GetAsync("http://localhost/health/live");
+        Assert.Equal(HttpStatusCode.OK, health.StatusCode);
     }
 
     private static async Task AssertErrorAsync(HttpResponseMessage response, HttpStatusCode status, string code)
@@ -193,7 +239,7 @@ internal sealed class IdentityApiHost : IAsyncDisposable
         var runtime = await LedgerSchema.CreateRuntimeLoginAsync(admin);
         var factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder => builder.UseEnvironment(environment)
             .WithTestAuthentication().ConfigureAppConfiguration((_, configuration) => configuration.AddInMemoryCollection(
-                new Dictionary<string, string?> { ["ConnectionStrings:ExactLedger"] = runtime })));
+                new Dictionary<string, string?> { ["ConnectionStrings:ExactLedger"] = runtime, ["https_port"] = "443" })));
         return new IdentityApiHost(factory, admin, runtime);
     }
 

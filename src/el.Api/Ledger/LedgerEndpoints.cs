@@ -14,10 +14,20 @@ namespace el.Api.Ledger;
 /// <param name="Amount">Decimal string with the currency's exact fractional digits.</param>
 /// <param name="Currency">USD, JPY or KWD.</param>
 public sealed record AmountResponse(string Amount, string Currency);
-/// <summary>Account totals; net debit is debits minus credits.</summary>
-public sealed record AccountBalanceResponse(Guid AccountId, AmountResponse DebitTotal, AmountResponse CreditTotal, AmountResponse NetDebit);
+/// <summary>Account totals and signed balance on its normal side.</summary>
+/// <param name="AccountId">Ledger account ID.</param>
+/// <param name="DebitTotal">Total debits.</param>
+/// <param name="CreditTotal">Total credits.</param>
+/// <param name="NetDebit">Debits minus credits.</param>
+/// <param name="NormalSide">Debit or Credit, determined by the account type.</param>
+/// <param name="Balance">Positive on the normal side; negative for a contra balance.</param>
+public sealed record AccountBalanceResponse(Guid AccountId, AmountResponse DebitTotal, AmountResponse CreditTotal,
+    AmountResponse NetDebit, string NormalSide, AmountResponse Balance);
 /// <summary>Exact debit and credit totals for one currency.</summary>
 public sealed record TrialBalanceResponse(string Currency, AmountResponse DebitTotal, AmountResponse CreditTotal, bool IsBalanced);
+/// <summary>Immutable business audit metadata.</summary>
+public sealed record AuditEventResponse(Guid Id, string ActorId, string Operation, string TargetId,
+    DateTimeOffset OccurredAtUtc, string CorrelationId);
 
 public static class LedgerEndpoints
 {
@@ -33,7 +43,7 @@ public static class LedgerEndpoints
             .WithTags("Ledger");
         endpoints.MapGet("/v1/audit-events", ReadAuditAsync)
             .RequireAuthorization(Permission.ReadAudit.ToString())
-            .Produces<IReadOnlyList<AuditEvent>>().ProducesValidationProblem().ProducesProblem(401).ProducesProblem(403)
+            .Produces<IReadOnlyList<AuditEventResponse>>().ProducesValidationProblem().ProducesProblem(401).ProducesProblem(403)
             .WithTags("Audit");
         return endpoints;
     }
@@ -47,7 +57,8 @@ public static class LedgerEndpoints
         if (balance is null || !ResourceAccess.Party(RequestIdentity.Get(context), balance.PartyId?.Value))
             return Results.Problem(ApiErrorResponses.Create(context, 404));
         return Results.Ok(new AccountBalanceResponse(accountId, Format(balance.DebitTotal, balance.Currency),
-            Format(balance.CreditTotal, balance.Currency), Format(balance.NetDebit, balance.Currency)));
+            Format(balance.CreditTotal, balance.Currency), Format(balance.NetDebit, balance.Currency),
+            balance.NormalSide.ToString(), Format(balance.OnNormalSide(balance.NormalSide), balance.Currency)));
     }
 
     /// <summary>Read all-time trial balances by currency (Finance/Auditor).</summary>
@@ -71,7 +82,9 @@ public static class LedgerEndpoints
         var count = limit ?? 50;
         if (start < 0 || count is < 1 or > 100)
             return ApiErrorResponses.Validation(context, new Dictionary<string, string[]> { ["pagination"] = ["Offset must be non-negative; limit must be 1 to 100."] });
-        return Results.Ok(await queries.ReadAsync(start, count, cancellationToken));
+        var events = await queries.ReadAsync(start, count, cancellationToken);
+        return Results.Ok(events.Select(row => new AuditEventResponse(row.Id, row.ActorId, row.Operation,
+            row.TargetId, row.OccurredAtUtc, row.CorrelationId)));
     }
 
     // Aggregate totals can exceed Money's per-value limit. Format the exact integer

@@ -19,8 +19,6 @@ public static class ApiSecurityExtensions
                 var bodyLimit = context.Features.Get<IHttpMaxRequestBodySizeFeature>();
                 if (bodyLimit is { IsReadOnly: false }) bodyLimit.MaxRequestBodySize = 4096;
             }
-            if (!app.Environment.IsDevelopment() && !context.Request.IsHttps && context.Request.Path != "/health/live")
-            { await ApiErrorResponses.WriteAsync(context, 400, "https_required"); return; }
             await next(context);
         });
         app.UseRateLimiter();

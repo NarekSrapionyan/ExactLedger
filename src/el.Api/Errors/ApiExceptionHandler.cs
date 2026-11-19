@@ -21,13 +21,16 @@ internal sealed class ApiExceptionHandler(ILogger<ApiExceptionHandler> logger) :
             BadHttpRequestException { InnerException: MoneyJsonException money } => (400, money.Code),
             BadHttpRequestException badRequest => (badRequest.StatusCode, (string?)null),
             MoneyJsonException money => (400, money.Code),
-            JsonException => (400, "invalid_request"),
+            JsonException => (400, "INVALID_REQUEST"),
             JournalValidationException { Error: JournalError.Unbalanced } => (400, "LEDGER_UNBALANCED"),
-            JournalValidationException => (400, "invalid_journal"),
-            LedgerLockTimeoutException => (409, "ledger_busy"),
-            AccountNotPostableException => (409, "account_not_postable"),
-            _ => (500, "internal_error"),
+            JournalValidationException => (400, "INVALID_JOURNAL"),
+            LedgerLockTimeoutException => (503, "LEDGER_BUSY"),
+            AccountNotPostableException => (409, "ACCOUNT_NOT_POSTABLE"),
+            _ => (500, "INTERNAL_ERROR"),
         };
+
+        if (exception is LedgerLockTimeoutException)
+            context.Response.Headers.RetryAfter = "1";
 
         // Never log exception messages, request bodies, headers or tokens: they can
         // contain credentials. The correlation ID connects this record to the response.

@@ -71,7 +71,16 @@ in the command's environment. Remove those variables before running the API.
 
 OpenAPI is at `/openapi/v1.json` in Development. Local Compose uses HTTP bound to
 loopback; the host launch profile uses `https://localhost:7243`. Outside Development,
-API requests require HTTPS. No browser/CORS flow is added for the Swift-only MVP.
+API requests require HTTPS: plaintext requests are rejected with 400 `HTTPS_REQUIRED`,
+without redirecting or reading login credentials. Redirection is a Development
+convenience only. Clients must use HTTPS from the first request; rejection cannot
+undo transmission by a misconfigured HTTP client.
+
+When deploying behind a TLS-terminating proxy, configure `UseForwardedHeaders`
+before the HTTPS guard with explicit `KnownProxies` / `KnownNetworks` for your
+deployment, and forward the original scheme. Untrusted forwarded headers must
+never enable HTTPS or change the client IP used by rate limiting. The application
+does not trust proxy headers by default. No browser/CORS flow is added for the Swift-only MVP.
 
 | Endpoint | Access |
 | --- | --- |
@@ -101,7 +110,10 @@ old signatures. Do not treat this educational token issuer as an external OAuth 
 
 Balances retain exact decimal-string/currency objects even when an aggregate
 exceeds Int64 or Money's per-value range. Debit/credit totals and `netDebit` have
-explicit sign conventions. This does not implement reservations or payout availability.
+explicit sign conventions. `normalSide` is `Debit` or `Credit`, derived from the
+stored account type. `balance` is computed on that side by the backend: a payable
+with credits of 184.45 and no debits has `balance.amount: "184.45"` and
+`netDebit.amount: "-184.45"`. A contra balance remains negative. This does not implement reservations or payout availability.
 
 ## Authorization and privacy
 
@@ -132,7 +144,15 @@ Errors use ProblemDetails with top-level `code`, `message` and `correlationId`;
 validation responses add `errors` keyed by field. Statuses are 400 malformed input,
 401 missing/invalid credentials, 403 denied role, 404 unavailable resource and 409
 business-state conflict. Rate limiting returns 429. Unexpected errors return a safe
-500. Known monetary codes and `LEDGER_UNBALANCED` are preserved.
+500. Ledger lock timeouts return retryable 503 `LEDGER_BUSY` with
+`Retry-After: 1`; retry after at least one second. Account-state conflicts remain
+409 `ACCOUNT_NOT_POSTABLE`.
+
+Generic HTTP and business error codes use `UPPER_SNAKE_CASE`, including
+`INVALID_REQUEST`, `INVALID_CREDENTIALS`, `UNAUTHENTICATED`, `FORBIDDEN`,
+`NOT_FOUND`, `CONFLICT`, `RATE_LIMITED` and `LEDGER_UNBALANCED`. Existing
+`money.*` codes identify monetary input validation failures and retain their
+dotted format. Clients should branch on `code`, not the human-readable message.
 
 The server supplies `X-Correlation-ID`, ignoring untrusted correlation headers.
 Application failure logs contain correlation/status/type metadata, not exception

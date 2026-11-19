@@ -13,6 +13,8 @@ public sealed record LoginRequest(string? Username, string? Password);
 /// <param name="ExpiresIn">Token lifetime in seconds.</param>
 /// <param name="ExpiresAtUtc">Expiry time in UTC.</param>
 public sealed record AccessTokenResponse(string AccessToken, string TokenType, int ExpiresIn, DateTimeOffset ExpiresAtUtc);
+/// <summary>Your authenticated identity, roles and ownership bindings.</summary>
+public sealed record MeResponse(string Id, string Username, IReadOnlyList<string> Roles, string? ClientId, Guid? PartyId);
 
 public static class AuthenticationEndpoints
 {
@@ -22,7 +24,7 @@ public static class AuthenticationEndpoints
             .Produces<AccessTokenResponse>().ProducesValidationProblem().ProducesProblem(401).ProducesProblem(429)
             .WithTags("Authentication");
         endpoints.MapGet("/v1/auth/me", Me)
-            .RequireAuthorization().Produces<AuthenticatedIdentity>().ProducesProblem(401).WithTags("Authentication");
+            .RequireAuthorization().Produces<MeResponse>().ProducesProblem(401).WithTags("Authentication");
         return endpoints;
     }
 
@@ -41,12 +43,16 @@ public static class AuthenticationEndpoints
         var identity = await identities.AuthenticateAsync(request.Username!, request.Password!, cancellationToken);
         if (identity is null)
         {
-            return Results.Problem(ApiErrorResponses.Create(context, 401, "invalid_credentials"));
+            return Results.Problem(ApiErrorResponses.Create(context, 401, "INVALID_CREDENTIALS"));
         }
         var token = tokens.Issue(identity);
         return Results.Ok(new AccessTokenResponse(token.Value, "Bearer", 1800, token.ExpiresAtUtc));
     }
 
     /// <summary>Read your identity, roles and ownership bindings.</summary>
-    public static IResult Me(HttpContext context) => Results.Ok(RequestIdentity.Get(context));
+    public static IResult Me(HttpContext context)
+    {
+        var identity = RequestIdentity.Get(context);
+        return Results.Ok(new MeResponse(identity.Id, identity.Username, identity.Roles, identity.ClientId, identity.PartyId));
+    }
 }
