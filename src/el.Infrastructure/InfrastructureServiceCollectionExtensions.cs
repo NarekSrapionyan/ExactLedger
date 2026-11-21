@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using el.Application.Audit;
 using el.Application.Security;
 using el.Infrastructure.Security;
+using el.Application.Knowledge;
 
 namespace el.Infrastructure;
 
@@ -45,6 +46,8 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<IdentityCredentials>();
         services.AddScoped<IIdentityAuthenticator, DatabaseIdentityAuthenticator>();
         services.AddScoped<IIdentitySeeder, IdentitySeeder>();
+        services.AddScoped<IKnowledgeStore, KnowledgeStore>();
+        services.AddScoped<KnowledgeService>();
 
         return services;
     }

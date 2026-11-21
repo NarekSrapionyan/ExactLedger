@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.OpenApi;
+using el.Domain.Common;
 
 namespace el.Api.Documentation;
 
@@ -9,6 +10,20 @@ public static class ApiDocumentationExtensions
     {
         services.AddOpenApi("v1", options =>
         {
+            options.AddSchemaTransformer((schema, context, _) =>
+            {
+                if (context.JsonTypeInfo.Type != typeof(Money)) return Task.CompletedTask;
+                schema.Type = JsonSchemaType.Object | (schema.Type.GetValueOrDefault() & JsonSchemaType.Null);
+                schema.Description = "Exact money; amount is a canonical decimal string in the currency's precision.";
+                schema.Properties = new Dictionary<string, IOpenApiSchema>
+                {
+                    ["amount"] = new OpenApiSchema { Type = JsonSchemaType.String, Description = "For example 250.00 USD, 250 JPY or 250.000 KWD." },
+                    ["currency"] = new OpenApiSchema { Type = JsonSchemaType.String, Description = "USD, JPY or KWD." },
+                };
+                schema.Required = new HashSet<string> { "amount", "currency" };
+                schema.AdditionalPropertiesAllowed = false;
+                return Task.CompletedTask;
+            });
             options.AddDocumentTransformer((document, _, _) =>
             {
                 document.Info.Title = "ExactLedger API";

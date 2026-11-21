@@ -48,6 +48,12 @@ public sealed class ApiHostTests
         Assert.Equal("Credentials for a seeded identity.", schemas.GetProperty("LoginRequest").GetProperty("description").GetString());
         Assert.Equal("Token lifetime in seconds.", schemas.GetProperty("AccessTokenResponse").GetProperty("properties")
             .GetProperty("expiresIn").GetProperty("description").GetString());
+        var money = schemas.GetProperty("Money").GetProperty("properties");
+        Assert.Equal(new[] { "amount", "currency" }, money.EnumerateObject().Select(property => property.Name).Order().ToArray());
+        Assert.Equal("string", money.GetProperty("amount").GetProperty("type").GetString());
+        Assert.Equal("string", money.GetProperty("currency").GetProperty("type").GetString());
+        foreach (var path in new[] { "/v1/regions", "/v1/deduction-types", "/v1/rules", "/v1/fee-profiles" })
+            Assert.True(paths.GetProperty(path).GetProperty("get").TryGetProperty("summary", out _));
     }
 
     [Fact]

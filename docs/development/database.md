@@ -10,7 +10,7 @@ Task: BE-007.1 — DbContext & PostgreSQL Setup
 
 ## Schema (BE-007.2)
 
-All tables are in the `ledger` schema. Constraints repeat the domain rules, so invalid rows are rejected even when they do not come through the domain model. Enums are stored as their integer values (all start at 1).
+All tables are in the `ledger` schema. Constraints repeat the domain rules, so invalid rows are rejected even when they do not come through the domain model. Ledger type/status/side enums are stored as their integer values (all start at 1). Knowledge configuration rounding modes use stable policy names.
 
 | Table | Key | Constraints |
 |---|---|---|
@@ -127,3 +127,22 @@ No schema or privilege change: `pg_advisory_xact_lock` is executable by PUBLIC, 
 ```sh
 dotnet test ExactLedger.sln -c Release --filter "Category!=PostgreSQL"
 ```
+
+## Versioned knowledge configuration (BE-010)
+
+`KnowledgeRulesAndProfiles` adds regions, deduction types, deduction rules,
+corporate fee profiles and normalized rule/profile fixture tables. Published
+versions retain their exact content and finite intervals. Foreign keys protect
+taxonomy, currencies and account references; publication checks mapping types,
+activity, interval overlap, sequence uniqueness and adjacent replacement versions.
+Published rows and examples reject UPDATE/DELETE (`EL201`) and TRUNCATE (`EL104`);
+invalid direct-SQL publication is rejected with `EL202`.
+
+Runtime has SELECT/INSERT on taxonomy, SELECT/INSERT/UPDATE on version tables and
+SELECT/INSERT/UPDATE/DELETE on example tables; triggers restrict mutation to drafts.
+It receives no schema privileges. Publication shares the monetary lock and unit of
+work with its business audit record. The migration also seeds the explicitly
+synthetic reference configurations and examples. See the
+[configuration guide](knowledge-configuration.md) for API contracts, applicability
+and replacement workflow. Integration tests cover migration rollback/reapplication
+without changing existing accounts, identities or audit history.

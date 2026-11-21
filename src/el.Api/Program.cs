@@ -5,6 +5,7 @@ using el.Infrastructure;
 using el.Api.Authentication;
 using el.Api.Ledger;
 using el.Api.Documentation;
+using el.Api.Knowledge;
 
 var seedIdentities = args.Contains("--seed-identities", StringComparer.Ordinal);
 var hostArguments = args.Where(argument => argument != "--seed-identities").ToArray();
@@ -67,6 +68,7 @@ else
 app.UseApiSecurity();
 app.MapIdentityEndpoints();
 app.MapLedgerEndpoints();
+app.MapKnowledgeEndpoints();
 
 if (app.Environment.IsDevelopment())
 {
