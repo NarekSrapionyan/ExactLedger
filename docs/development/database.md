@@ -146,3 +146,21 @@ synthetic reference configurations and examples. See the
 [configuration guide](knowledge-configuration.md) for API contracts, applicability
 and replacement workflow. Integration tests cover migration rollback/reapplication
 without changing existing accounts, identities or audit history.
+
+## Settlement history and initial holds (BE-011)
+
+`SettlementWaterfall` adds settlements, normalized settlement allocations, initial
+escrow holds and retained idempotency records. Full validated input, configuration
+content and trace are stored as immutable JSONB alongside exact normalized amounts.
+Client/trade and client/operation/key uniqueness are independent permanent guards.
+The application retains party row locks through commit and the posting path locks
+account status before finalizing the journal.
+
+A deferred commit constraint verifies conservation, per-account journal agreement,
+clearing debit, command presence and escrow mappings (`EL302`). A server-generated
+transaction marker blocks appending child rows after commit (`EL301`). Runtime gets
+only SELECT/INSERT; ordinary owner mutations/truncation are blocked as history.
+All amounts, holds, journal, audit and key commit together. BE-012 will introduce
+controlled hold release/refund transitions; initial holds currently remain Held.
+See the [settlement guide](settlements.md) for requests, results, hash replay and
+worked fixtures. Existing migrations are preserved.

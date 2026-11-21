@@ -1001,6 +1001,67 @@ namespace el.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("el.Infrastructure.Persistence.EscrowHoldRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("AllocationOrdinal")
+                        .HasColumnType("integer")
+                        .HasColumnName("allocation_ordinal");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("currency");
+
+                    b.Property<DateTimeOffset>("DueAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("due_at_utc");
+
+                    b.Property<Guid>("EscrowAccountId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("escrow_account_id");
+
+                    b.Property<long>("OriginalHeldMinor")
+                        .HasColumnType("bigint")
+                        .HasColumnName("original_held_minor");
+
+                    b.Property<Guid>("PartyId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("party_id");
+
+                    b.Property<Guid>("PayableAccountId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("payable_account_id");
+
+                    b.Property<long>("ReleasedMinor")
+                        .HasColumnType("bigint")
+                        .HasColumnName("released_minor");
+
+                    b.Property<Guid>("SettlementId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("settlement_id");
+
+                    b.Property<string>("State")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("state");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DueAtUtc");
+
+                    b.HasIndex("SettlementId", "AllocationOrdinal")
+                        .IsUnique();
+
+                    b.ToTable("escrow_holds", "ledger", t =>
+                        {
+                            t.HasCheckConstraint("ck_initial_escrow_hold", "original_held_minor BETWEEN 1 AND 99999999999 AND released_minor = 0 AND state = 'Held' AND isfinite(due_at_utc)");
+                        });
+                });
+
             modelBuilder.Entity("el.Infrastructure.Persistence.JournalEntryRecord", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1138,6 +1199,165 @@ namespace el.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("el.Infrastructure.Persistence.SettlementAllocationRecord", b =>
+                {
+                    b.Property<Guid>("SettlementId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("settlement_id");
+
+                    b.Property<int>("Ordinal")
+                        .HasColumnType("integer")
+                        .HasColumnName("ordinal");
+
+                    b.Property<Guid>("AccountId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("account_id");
+
+                    b.Property<long>("AmountMinor")
+                        .HasColumnType("bigint")
+                        .HasColumnName("amount_minor");
+
+                    b.Property<string>("Component")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("component");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("currency");
+
+                    b.Property<string>("LineId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("line_id");
+
+                    b.Property<Guid?>("PartyId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("party_id");
+
+                    b.HasKey("SettlementId", "Ordinal");
+
+                    b.HasIndex("PartyId");
+
+                    b.HasIndex("SettlementId", "Currency");
+
+                    b.ToTable("settlement_allocations", "ledger", t =>
+                        {
+                            t.HasCheckConstraint("ck_settlement_allocation", "ordinal >= 0 AND amount_minor BETWEEN 0 AND 99999999999 AND component IN ('Regional','Processor','Commission','Affiliate','Payable','Escrow')");
+                        });
+                });
+
+            modelBuilder.Entity("el.Infrastructure.Persistence.SettlementCommandRecord", b =>
+                {
+                    b.Property<string>("ClientId")
+                        .HasColumnType("text")
+                        .HasColumnName("client_id");
+
+                    b.Property<string>("Operation")
+                        .HasColumnType("text")
+                        .HasColumnName("operation");
+
+                    b.Property<string>("Key")
+                        .HasColumnType("text")
+                        .HasColumnName("key");
+
+                    b.Property<string>("RequestHash")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("request_hash");
+
+                    b.Property<Guid>("SettlementId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("settlement_id");
+
+                    b.HasKey("ClientId", "Operation", "Key");
+
+                    b.HasIndex("SettlementId");
+
+                    b.ToTable("idempotency_records", "ledger", t =>
+                        {
+                            t.HasCheckConstraint("ck_settlement_command", "operation = 'settlement.create' AND length(key) BETWEEN 1 AND 128 AND request_hash ~ '^[0-9a-f]{64}$'");
+                        });
+                });
+
+            modelBuilder.Entity("el.Infrastructure.Persistence.SettlementRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ClientId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("client_id");
+
+                    b.Property<long>("CreationTransaction")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("creation_transaction")
+                        .HasDefaultValueSql("txid_current()");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("currency");
+
+                    b.Property<long>("GrossMinor")
+                        .HasColumnType("bigint")
+                        .HasColumnName("gross_minor");
+
+                    b.Property<string>("InputJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("input_json");
+
+                    b.Property<Guid>("JournalEntryId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("journal_entry_id");
+
+                    b.Property<DateTimeOffset>("OccurredAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("occurred_at");
+
+                    b.Property<DateTimeOffset>("PostedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("posted_at_utc");
+
+                    b.Property<string>("ResultHash")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("result_hash");
+
+                    b.Property<string>("ResultJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("result_json");
+
+                    b.Property<string>("SnapshotJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("snapshot_json");
+
+                    b.Property<string>("TradeId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("trade_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("JournalEntryId")
+                        .IsUnique();
+
+                    b.HasIndex("ClientId", "TradeId")
+                        .IsUnique();
+
+                    b.ToTable("settlements", "ledger", t =>
+                        {
+                            t.HasCheckConstraint("ck_settlement_values", "gross_minor BETWEEN 1 AND 99999999999 AND length(client_id) BETWEEN 1 AND 100 AND length(trade_id) BETWEEN 1 AND 100 AND result_hash ~ '^[0-9a-f]{64}$'");
+                        });
+                });
+
             modelBuilder.Entity("el.Infrastructure.Security.IdentityRecord", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1252,6 +1472,15 @@ namespace el.Infrastructure.Persistence.Migrations
                         .HasConstraintName("fk_accounts_party");
                 });
 
+            modelBuilder.Entity("el.Infrastructure.Persistence.EscrowHoldRecord", b =>
+                {
+                    b.HasOne("el.Infrastructure.Persistence.SettlementAllocationRecord", null)
+                        .WithMany()
+                        .HasForeignKey("SettlementId", "AllocationOrdinal")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("el.Infrastructure.Persistence.JournalEntryRecord", b =>
                 {
                     b.HasOne("el.Infrastructure.Persistence.KnownCurrency", null)
@@ -1286,6 +1515,25 @@ namespace el.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_journal_lines_entry");
+                });
+
+            modelBuilder.Entity("el.Infrastructure.Persistence.SettlementAllocationRecord", b =>
+                {
+                    b.HasOne("el.Infrastructure.Persistence.SettlementRecord", null)
+                        .WithMany()
+                        .HasForeignKey("SettlementId", "Currency")
+                        .HasPrincipalKey("Id", "Currency")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("el.Infrastructure.Persistence.SettlementCommandRecord", b =>
+                {
+                    b.HasOne("el.Infrastructure.Persistence.SettlementRecord", null)
+                        .WithMany()
+                        .HasForeignKey("SettlementId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("el.Infrastructure.Security.IdentityRecord", b =>

@@ -52,6 +52,23 @@ public static class ApiDocumentationExtensions
             });
             options.AddOperationTransformer((operation, context, _) =>
             {
+                if (context.Description.ActionDescriptor.EndpointMetadata.OfType<IEndpointNameMetadata>().Any(item => item.EndpointName == "SubmitSettlement"))
+                {
+                    operation.Parameters ??= new List<IOpenApiParameter>();
+                    operation.Parameters.Add(new OpenApiParameter
+                    {
+                        Name = "Idempotency-Key", In = ParameterLocation.Header, Required = true,
+                        Description = "Stable client command key. Reuse with identical input for a safe retry.",
+                        Schema = new OpenApiSchema { Type = JsonSchemaType.String, MinLength = 1, MaxLength = 128 },
+                    });
+                }
+                if (context.Description.ActionDescriptor.EndpointMetadata.OfType<IEndpointNameMetadata>().Any(item => item.EndpointName is "ReadSettlement" or "ReadSettlementTrace") &&
+                    operation.Responses is not null && operation.Responses.TryGetValue("200", out var response) &&
+                    response.Content is not null && response.Content.TryGetValue("application/json", out var media))
+                {
+                    media.Schema = new OpenApiSchema { OneOf =
+                        [new OpenApiSchemaReference("FullSettlementResponse"), new OpenApiSchemaReference("PayeeSettlementResponse")] };
+                }
                 if (context.Description.ActionDescriptor.EndpointMetadata.OfType<IAllowAnonymous>().Any())
                     operation.Security = [];
                 return Task.CompletedTask;
