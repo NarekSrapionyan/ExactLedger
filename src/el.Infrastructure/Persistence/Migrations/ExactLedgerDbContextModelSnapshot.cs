@@ -110,6 +110,513 @@ namespace el.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("el.Domain.Knowledge.CorporateFeeProfile", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ClientId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("client_id");
+
+                    b.Property<Guid>("CommissionAccountId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("commission_account_id");
+
+                    b.Property<long>("CommissionRateUnits")
+                        .HasColumnType("bigint")
+                        .HasColumnName("commission_rate_units");
+
+                    b.Property<string>("CorporateCode")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("corporate_code");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("currency");
+
+                    b.Property<DateTimeOffset>("EffectiveFrom")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("effective_from");
+
+                    b.Property<DateTimeOffset>("EffectiveTo")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("effective_to");
+
+                    b.Property<long>("EscrowRateUnits")
+                        .HasColumnType("bigint")
+                        .HasColumnName("escrow_rate_units");
+
+                    b.Property<int>("HoldDays")
+                        .HasColumnType("integer")
+                        .HasColumnName("hold_days");
+
+                    b.Property<bool>("IsSynthetic")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_synthetic");
+
+                    b.Property<Guid>("ProcessorAccountId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("processor_account_id");
+
+                    b.Property<long?>("ProcessorCapMinor")
+                        .HasColumnType("bigint")
+                        .HasColumnName("processor_cap_minor");
+
+                    b.Property<long>("ProcessorFixedMinor")
+                        .HasColumnType("bigint")
+                        .HasColumnName("processor_fixed_minor");
+
+                    b.Property<long?>("ProcessorFloorMinor")
+                        .HasColumnType("bigint")
+                        .HasColumnName("processor_floor_minor");
+
+                    b.Property<long>("ProcessorRateUnits")
+                        .HasColumnType("bigint")
+                        .HasColumnName("processor_rate_units");
+
+                    b.Property<Guid>("ProfileId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("profile_id");
+
+                    b.Property<DateTimeOffset?>("PublishedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("published_at_utc");
+
+                    b.Property<string>("PublishedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("published_by");
+
+                    b.Property<string>("RoundingMode")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("rounding_mode");
+
+                    b.Property<string>("SourceNote")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("source_note");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("integer")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProfileId", "Version")
+                        .IsUnique();
+
+                    b.ToTable("fee_profiles", "ledger", t =>
+                        {
+                            t.HasCheckConstraint("ck_profiles_amounts", "processor_fixed_minor BETWEEN 0 AND 99999999999 AND (processor_floor_minor IS NULL OR processor_floor_minor BETWEEN 0 AND 99999999999) AND (processor_cap_minor IS NULL OR processor_cap_minor BETWEEN 0 AND 99999999999) AND (processor_floor_minor IS NULL OR processor_cap_minor IS NULL OR processor_floor_minor <= processor_cap_minor)");
+
+                            t.HasCheckConstraint("ck_profiles_interval", "effective_from < effective_to AND isfinite(effective_from) AND isfinite(effective_to)");
+
+                            t.HasCheckConstraint("ck_profiles_publication", "(published_by IS NULL) = (published_at_utc IS NULL) AND (published_by IS NULL OR btrim(published_by) <> '')");
+
+                            t.HasCheckConstraint("ck_profiles_values", "version > 0 AND profile_id <> '00000000-0000-0000-0000-000000000000' AND commission_rate_units BETWEEN 0 AND 100000000 AND processor_rate_units BETWEEN 0 AND 100000000 AND escrow_rate_units BETWEEN 0 AND 100000000 AND hold_days BETWEEN 0 AND 30 AND rounding_mode IN ('HalfEven','HalfAwayFromZero','TowardZero') AND btrim(client_id) <> '' AND btrim(corporate_code) <> '' AND btrim(source_note) <> ''");
+                        });
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("7ef63383-197f-3e20-cbc3-57c59e580988"),
+                            ClientId = "demo-client-1",
+                            CommissionAccountId = new Guid("10e31b89-58ae-d3bb-ef55-3f1a061d32f7"),
+                            CommissionRateUnits = 10000000L,
+                            CorporateCode = "DEMO-STANDARD",
+                            Currency = "USD",
+                            EffectiveFrom = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            EffectiveTo = new DateTimeOffset(new DateTime(2027, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            EscrowRateUnits = 10000000L,
+                            HoldDays = 7,
+                            IsSynthetic = true,
+                            ProcessorAccountId = new Guid("4dbf204a-03d6-9e42-b974-54fa668b1599"),
+                            ProcessorCapMinor = 500L,
+                            ProcessorFixedMinor = 30L,
+                            ProcessorFloorMinor = 50L,
+                            ProcessorRateUnits = 2900000L,
+                            ProfileId = new Guid("f61a3ce8-13c3-010d-d2b1-8a8e262e862b"),
+                            PublishedAtUtc = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            PublishedBy = "synthetic-seed",
+                            RoundingMode = "HalfEven",
+                            SourceNote = "Synthetic seller-borne processor fee; 10% escrow held for 7 days.",
+                            Version = 1
+                        },
+                        new
+                        {
+                            Id = new Guid("81128bcc-bd7e-43c6-28cd-f14392948e32"),
+                            ClientId = "demo-client-1",
+                            CommissionAccountId = new Guid("10e31b89-58ae-d3bb-ef55-3f1a061d32f7"),
+                            CommissionRateUnits = 0L,
+                            CorporateCode = "DEMO-SIMPLE",
+                            Currency = "USD",
+                            EffectiveFrom = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            EffectiveTo = new DateTimeOffset(new DateTime(2027, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            EscrowRateUnits = 0L,
+                            HoldDays = 0,
+                            IsSynthetic = true,
+                            ProcessorAccountId = new Guid("4dbf204a-03d6-9e42-b974-54fa668b1599"),
+                            ProcessorFixedMinor = 0L,
+                            ProcessorRateUnits = 1000000L,
+                            ProfileId = new Guid("9794939b-dbdf-58a2-3f21-9c268043e6a8"),
+                            PublishedAtUtc = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            PublishedBy = "synthetic-seed",
+                            RoundingMode = "HalfAwayFromZero",
+                            SourceNote = "Synthetic seller-borne processor fee; no escrow.",
+                            Version = 1
+                        });
+                });
+
+            modelBuilder.Entity("el.Domain.Knowledge.DeductionRule", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("BeneficiaryAccountId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("beneficiary_account_id");
+
+                    b.Property<string>("CalculationBase")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("calculation_base");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("currency");
+
+                    b.Property<string>("DeductionTypeCode")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("deduction_type_code");
+
+                    b.Property<DateTimeOffset>("EffectiveFrom")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("effective_from");
+
+                    b.Property<DateTimeOffset>("EffectiveTo")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("effective_to");
+
+                    b.Property<bool>("IsSynthetic")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_synthetic");
+
+                    b.Property<DateTimeOffset?>("PublishedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("published_at_utc");
+
+                    b.Property<string>("PublishedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("published_by");
+
+                    b.Property<long>("RateUnits")
+                        .HasColumnType("bigint")
+                        .HasColumnName("rate_units");
+
+                    b.Property<string>("RegionCode")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("region_code");
+
+                    b.Property<string>("RoundingMode")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("rounding_mode");
+
+                    b.Property<Guid>("RuleId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("rule_id");
+
+                    b.Property<int>("Sequence")
+                        .HasColumnType("integer")
+                        .HasColumnName("sequence");
+
+                    b.Property<string>("SourceNote")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("source_note");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("integer")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DeductionTypeCode");
+
+                    b.HasIndex("RegionCode");
+
+                    b.HasIndex("RuleId", "Version")
+                        .IsUnique();
+
+                    b.ToTable("deduction_rules", "ledger", t =>
+                        {
+                            t.HasCheckConstraint("ck_rules_interval", "effective_from < effective_to AND isfinite(effective_from) AND isfinite(effective_to)");
+
+                            t.HasCheckConstraint("ck_rules_publication", "(published_by IS NULL) = (published_at_utc IS NULL) AND (published_by IS NULL OR btrim(published_by) <> '')");
+
+                            t.HasCheckConstraint("ck_rules_values", "version > 0 AND rule_id <> '00000000-0000-0000-0000-000000000000' AND calculation_base = 'Gross' AND rate_units BETWEEN 0 AND 100000000 AND sequence BETWEEN 1 AND 1000 AND rounding_mode IN ('HalfEven','HalfAwayFromZero','TowardZero') AND btrim(source_note) <> ''");
+                        });
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("0ef92b3c-214f-740a-52b9-6fa308e31e06"),
+                            BeneficiaryAccountId = new Guid("25fc30ad-40f4-dee6-1e97-398e5edf7480"),
+                            CalculationBase = "Gross",
+                            Currency = "USD",
+                            DeductionTypeCode = "DEMO-LEVY",
+                            EffectiveFrom = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            EffectiveTo = new DateTimeOffset(new DateTime(2027, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            IsSynthetic = true,
+                            PublishedAtUtc = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            PublishedBy = "synthetic-seed",
+                            RateUnits = 10000000L,
+                            RegionCode = "DEMO-A",
+                            RoundingMode = "HalfEven",
+                            RuleId = new Guid("957f8844-39a1-453c-7ecd-e4b1bc4ff827"),
+                            Sequence = 1,
+                            SourceNote = "Synthetic teaching assumption; no real tax law is represented.",
+                            Version = 1
+                        },
+                        new
+                        {
+                            Id = new Guid("09fcda52-5221-011d-67c2-84a8bbb26e7d"),
+                            BeneficiaryAccountId = new Guid("25fc30ad-40f4-dee6-1e97-398e5edf7480"),
+                            CalculationBase = "Gross",
+                            Currency = "USD",
+                            DeductionTypeCode = "DEMO-LEVY",
+                            EffectiveFrom = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            EffectiveTo = new DateTimeOffset(new DateTime(2027, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            IsSynthetic = true,
+                            PublishedAtUtc = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            PublishedBy = "synthetic-seed",
+                            RateUnits = 5000000L,
+                            RegionCode = "DEMO-B",
+                            RoundingMode = "HalfEven",
+                            RuleId = new Guid("d216babc-e76d-6ac3-1c9c-66208c3a97e2"),
+                            Sequence = 1,
+                            SourceNote = "Synthetic teaching assumption; no real tax law is represented.",
+                            Version = 1
+                        });
+                });
+
+            modelBuilder.Entity("el.Domain.Knowledge.DeductionType", b =>
+                {
+                    b.Property<string>("Code")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("code");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("name");
+
+                    b.HasKey("Code");
+
+                    b.ToTable("deduction_types", "ledger");
+
+                    b.HasData(
+                        new
+                        {
+                            Code = "DEMO-LEVY",
+                            Description = "Educational gross-based deduction, not a statement of law.",
+                            Name = "Synthetic levy"
+                        });
+                });
+
+            modelBuilder.Entity("el.Domain.Knowledge.ProfileFixture", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<long>("ExpectedCommissionMinor")
+                        .HasColumnType("bigint")
+                        .HasColumnName("expected_commission_minor");
+
+                    b.Property<long>("ExpectedEscrowMinor")
+                        .HasColumnType("bigint")
+                        .HasColumnName("expected_escrow_minor");
+
+                    b.Property<long>("ExpectedPayableMinor")
+                        .HasColumnType("bigint")
+                        .HasColumnName("expected_payable_minor");
+
+                    b.Property<long>("ExpectedProcessorMinor")
+                        .HasColumnType("bigint")
+                        .HasColumnName("expected_processor_minor");
+
+                    b.Property<long>("GrossMinor")
+                        .HasColumnType("bigint")
+                        .HasColumnName("gross_minor");
+
+                    b.Property<string>("Note")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("note");
+
+                    b.Property<Guid>("ProfileVersionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("profile_version_id");
+
+                    b.Property<long>("ShareMinor")
+                        .HasColumnType("bigint")
+                        .HasColumnName("share_minor");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProfileVersionId");
+
+                    b.ToTable("profile_fixtures", "ledger", t =>
+                        {
+                            t.HasCheckConstraint("ck_profile_fixture_amounts", "gross_minor BETWEEN 1 AND 99999999999 AND share_minor BETWEEN 0 AND gross_minor AND expected_commission_minor BETWEEN 0 AND 99999999999 AND expected_processor_minor BETWEEN 0 AND 99999999999 AND expected_escrow_minor BETWEEN 0 AND 99999999999 AND expected_payable_minor BETWEEN 0 AND 99999999999");
+                        });
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("17f5291b-d330-3a16-bf76-199f6ff13266"),
+                            ExpectedCommissionMinor = 1000L,
+                            ExpectedEscrowMinor = 800L,
+                            ExpectedPayableMinor = 7200L,
+                            ExpectedProcessorMinor = 320L,
+                            GrossMinor = 10000L,
+                            Note = "Synthetic gross 100.00; beneficiary share 80.00.",
+                            ProfileVersionId = new Guid("7ef63383-197f-3e20-cbc3-57c59e580988"),
+                            ShareMinor = 8000L
+                        },
+                        new
+                        {
+                            Id = new Guid("b91a2680-9191-be4c-91c3-2491bfd0a84b"),
+                            ExpectedCommissionMinor = 0L,
+                            ExpectedEscrowMinor = 0L,
+                            ExpectedPayableMinor = 8000L,
+                            ExpectedProcessorMinor = 100L,
+                            GrossMinor = 10000L,
+                            Note = "Synthetic gross 100.00; beneficiary share 80.00.",
+                            ProfileVersionId = new Guid("81128bcc-bd7e-43c6-28cd-f14392948e32"),
+                            ShareMinor = 8000L
+                        });
+                });
+
+            modelBuilder.Entity("el.Domain.Knowledge.Region", b =>
+                {
+                    b.Property<string>("Code")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("code");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("name");
+
+                    b.HasKey("Code");
+
+                    b.ToTable("regions", "ledger");
+
+                    b.HasData(
+                        new
+                        {
+                            Code = "DEMO-A",
+                            Name = "Synthetic Region A"
+                        },
+                        new
+                        {
+                            Code = "DEMO-B",
+                            Name = "Synthetic Region B"
+                        },
+                        new
+                        {
+                            Code = "DEMO-NONE",
+                            Name = "Synthetic no-deduction region"
+                        });
+                });
+
+            modelBuilder.Entity("el.Domain.Knowledge.RuleFixture", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<long>("ExpectedMinor")
+                        .HasColumnType("bigint")
+                        .HasColumnName("expected_minor");
+
+                    b.Property<long>("GrossMinor")
+                        .HasColumnType("bigint")
+                        .HasColumnName("gross_minor");
+
+                    b.Property<string>("Note")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("note");
+
+                    b.Property<Guid>("RuleVersionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("rule_version_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RuleVersionId");
+
+                    b.ToTable("rule_fixtures", "ledger", t =>
+                        {
+                            t.HasCheckConstraint("ck_rule_fixture_amounts", "gross_minor BETWEEN 1 AND 99999999999 AND expected_minor BETWEEN 0 AND 99999999999");
+                        });
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("610054e7-48ba-d432-e10a-1f33914d7255"),
+                            ExpectedMinor = 1000L,
+                            GrossMinor = 10000L,
+                            Note = "Synthetic USD 100.00 gross example.",
+                            RuleVersionId = new Guid("0ef92b3c-214f-740a-52b9-6fa308e31e06")
+                        },
+                        new
+                        {
+                            Id = new Guid("60f29052-ae43-029b-cb3a-61c82babc71a"),
+                            ExpectedMinor = 500L,
+                            GrossMinor = 10000L,
+                            Note = "Synthetic USD 100.00 gross example.",
+                            RuleVersionId = new Guid("09fcda52-5221-011d-67c2-84a8bbb26e7d")
+                        });
+                });
+
             modelBuilder.Entity("el.Domain.Ledger.Account", b =>
                 {
                     b.Property<Guid>("Id")
@@ -694,6 +1201,39 @@ namespace el.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_currency_definitions_currency");
+                });
+
+            modelBuilder.Entity("el.Domain.Knowledge.DeductionRule", b =>
+                {
+                    b.HasOne("el.Domain.Knowledge.DeductionType", null)
+                        .WithMany()
+                        .HasForeignKey("DeductionTypeCode")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("el.Domain.Knowledge.Region", null)
+                        .WithMany()
+                        .HasForeignKey("RegionCode")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("el.Domain.Knowledge.ProfileFixture", b =>
+                {
+                    b.HasOne("el.Domain.Knowledge.CorporateFeeProfile", null)
+                        .WithMany()
+                        .HasForeignKey("ProfileVersionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("el.Domain.Knowledge.RuleFixture", b =>
+                {
+                    b.HasOne("el.Domain.Knowledge.DeductionRule", null)
+                        .WithMany()
+                        .HasForeignKey("RuleVersionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("el.Domain.Ledger.Account", b =>

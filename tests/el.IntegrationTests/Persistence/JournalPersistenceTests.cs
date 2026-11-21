@@ -25,7 +25,7 @@ public sealed class JournalPersistenceTests(PostgreSqlFixture database)
         await using var context = LedgerSchema.NewContext(admin);
 
         Assert.Equal(
-            new[] { "20261110203211_InitialLedgerSchema", "20261110203212_LedgerSafetyGuards", "20261116152549_IdentityAndAudit" },
+            new[] { "20261110203211_InitialLedgerSchema", "20261110203212_LedgerSafetyGuards", "20261116152549_IdentityAndAudit", "20261121054906_KnowledgeRulesAndProfiles" },
             await context.Database.GetAppliedMigrationsAsync());
         Assert.Empty(await context.Database.GetPendingMigrationsAsync());
         Assert.False(context.Database.HasPendingModelChanges());

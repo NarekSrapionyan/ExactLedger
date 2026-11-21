@@ -4,6 +4,7 @@ using el.Application.Ledger;
 using el.Domain.Ledger;
 using Microsoft.AspNetCore.Diagnostics;
 using el.Api.Contracts;
+using el.Application.Knowledge;
 
 namespace el.Api.Errors;
 
@@ -18,6 +19,8 @@ internal sealed class ApiExceptionHandler(ILogger<ApiExceptionHandler> logger) :
 
         var (status, code) = exception switch
         {
+            KnowledgeException knowledge => (knowledge.Failure switch
+            { KnowledgeFailure.Invalid => 400, KnowledgeFailure.NotFound => 404, _ => 409 }, knowledge.Code),
             BadHttpRequestException { InnerException: MoneyJsonException money } => (400, money.Code),
             BadHttpRequestException badRequest => (badRequest.StatusCode, (string?)null),
             MoneyJsonException money => (400, money.Code),
