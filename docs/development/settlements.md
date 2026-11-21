@@ -77,7 +77,7 @@ profile version and prove earlier trades/retries remain unchanged while a newly
 eligible trade uses the new commission.
 
 Escrow holds are created atomically and are not available as payable balance.
-Due holds are released through the [escrow release API](escrow.md) (BE-012.1); refunds follow in BE-012.2; clearing, payouts
+Due holds are released through the [escrow release API](escrow.md) (BE-012.1); full refunds through the [refund API](refunds.md) (BE-012.2); clearing, payouts
 and statements belong to BE-013. BE-011 adds no arbitrary journal-posting endpoint.
 
 ```sh

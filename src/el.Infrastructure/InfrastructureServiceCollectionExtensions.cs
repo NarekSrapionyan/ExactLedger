@@ -54,6 +54,9 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<SettlementService>();
         services.AddScoped<IEscrowStore, EscrowStore>();
         services.AddScoped<EscrowService>();
+        services.AddScoped<IRefundStore, RefundStore>();
+        services.TryAddScoped<ISettlementBatchMembership, NoSettlementBatchMembership>();
+        services.AddScoped<RefundService>();
 
         return services;
     }

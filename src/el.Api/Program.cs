@@ -73,6 +73,7 @@ app.MapLedgerEndpoints();
 app.MapKnowledgeEndpoints();
 app.MapSettlementEndpoints();
 app.MapEscrowEndpoints();
+app.MapRefundEndpoints();
 
 if (app.Environment.IsDevelopment())
 {

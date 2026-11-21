@@ -61,3 +61,15 @@ internal sealed class EscrowHoldTransitionRecord
     public long AmountMinor { get; set; }
     public DateTimeOffset OccurredAtUtc { get; set; }
 }
+/// <summary>A full refund of one settlement and its retained idempotency key (one refund per settlement).</summary>
+internal sealed class SettlementRefundRecord
+{
+    public Guid SettlementId { get; set; }
+    public string ClientId { get; set; } = null!;
+    public string IdempotencyKey { get; set; } = null!;
+    public string RequestHash { get; set; } = null!;
+    public Guid JournalEntryId { get; set; }
+    public string Currency { get; set; } = null!;
+    public long AmountMinor { get; set; }
+    public DateTimeOffset RefundedAtUtc { get; set; }
+}
