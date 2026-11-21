@@ -54,6 +54,12 @@ public sealed class ApiHostTests
         Assert.Equal("string", money.GetProperty("currency").GetProperty("type").GetString());
         foreach (var path in new[] { "/v1/regions", "/v1/deduction-types", "/v1/rules", "/v1/fee-profiles" })
             Assert.True(paths.GetProperty(path).GetProperty("get").TryGetProperty("summary", out _));
+        var submit = paths.GetProperty("/v1/settlements").GetProperty("post");
+        Assert.Contains(submit.GetProperty("parameters").EnumerateArray(), parameter =>
+            parameter.GetProperty("name").GetString() == "Idempotency-Key" && parameter.GetProperty("required").GetBoolean());
+        var variants = paths.GetProperty("/v1/settlements/{id}").GetProperty("get").GetProperty("responses")
+            .GetProperty("200").GetProperty("content").GetProperty("application/json").GetProperty("schema").GetProperty("oneOf");
+        Assert.Equal(2, variants.GetArrayLength());
     }
 
     [Fact]

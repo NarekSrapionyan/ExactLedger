@@ -129,14 +129,14 @@ public static class KnowledgeEndpoints
     private static RoundingMode Mode(string value) => value switch
     { "HalfEven" => RoundingMode.HalfEven, "HalfAwayFromZero" => RoundingMode.HalfAwayFromZero, "TowardZero" => RoundingMode.TowardZero, _ => throw new ArgumentException("Unknown rounding mode.") };
     private static Money Money(long value, string currency) => el.Domain.Common.Money.FromMinorUnits(value, CurrencyCode.Parse(currency));
-    private static RuleResponse ToResponse(RuleVersion v)
+    internal static RuleResponse ToResponse(RuleVersion v)
     {
         var r = v.Definition;
         return new(r.Id, new(r.RuleId, r.Version, r.RegionCode, r.DeductionTypeCode, r.CalculationBase, r.RateUnits, r.Sequence,
             r.BeneficiaryAccountId, r.Currency, r.RoundingMode.ToString(), r.EffectiveFrom, r.EffectiveTo, r.SourceNote, r.IsSynthetic,
             v.Fixtures.Select(f => new RuleExampleRequest(f.Note, Money(f.GrossMinor, r.Currency), Money(f.ExpectedMinor, r.Currency))).ToArray()), r.PublishedBy, r.PublishedAtUtc);
     }
-    private static ProfileResponse ToResponse(ProfileVersion v)
+    internal static ProfileResponse ToResponse(ProfileVersion v)
     {
         var p = v.Definition;
         return new(p.Id, new(p.ProfileId, p.Version, p.ClientId, p.CorporateCode, p.Currency, p.CommissionRateUnits, p.ProcessorRateUnits,

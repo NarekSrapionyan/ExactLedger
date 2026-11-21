@@ -7,6 +7,7 @@ using el.Application.Audit;
 using el.Application.Security;
 using el.Infrastructure.Security;
 using el.Application.Knowledge;
+using el.Application.Settlements;
 
 namespace el.Infrastructure;
 
@@ -48,6 +49,9 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IIdentitySeeder, IdentitySeeder>();
         services.AddScoped<IKnowledgeStore, KnowledgeStore>();
         services.AddScoped<KnowledgeService>();
+        services.AddScoped<ISettlementStore, SettlementStore>();
+        services.AddSingleton<ISettlementCodec, SettlementCodec>();
+        services.AddScoped<SettlementService>();
 
         return services;
     }

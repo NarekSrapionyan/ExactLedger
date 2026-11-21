@@ -125,9 +125,16 @@ public sealed class KnowledgeService(IKnowledgeStore store, IUnitOfWork unitOfWo
         string corporateCode, string currency, DateTimeOffset occurredAt, CancellationToken ct) =>
         unitOfWork.ExecuteAsync(async token =>
         {
-            await operationLock.AcquireAsync(token);
-            return await SelectCoreAsync(region, profileId, clientId, corporateCode, currency, occurredAt, token);
+            return await SelectWithinTransactionAsync(region, profileId, clientId, corporateCode, currency, occurredAt, token);
         }, ct);
+
+    /// <summary>For settlement workflows that already own a unit-of-work transaction.</summary>
+    public async Task<KnowledgeSelection> SelectWithinTransactionAsync(string region, Guid profileId, string clientId,
+        string corporateCode, string currency, DateTimeOffset occurredAt, CancellationToken ct)
+    {
+        await operationLock.AcquireAsync(ct);
+        return await SelectCoreAsync(region, profileId, clientId, corporateCode, currency, occurredAt, ct);
+    }
 
     private async Task<KnowledgeSelection> SelectCoreAsync(string region, Guid profileId, string clientId,
         string corporateCode, string currency, DateTimeOffset occurredAt, CancellationToken ct)

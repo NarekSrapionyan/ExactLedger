@@ -133,8 +133,9 @@ broader authorized Finance/Admin/Auditor settlement view is distinct from this s
 For artifact downloads, use the policy for that artifact's operation and the stored
 owner where applicable; never expose static files or a generic download bypass.
 
-Settlement, refund, escrow, clearing, reporting and artifact endpoints arrive in
-their own tasks. Configuration APIs are available through
+Refund, escrow release, clearing, reporting and artifact endpoints arrive in
+their own tasks. [Settlement APIs](settlements.md) are available through BE-011.
+Configuration APIs are available through
 [BE-010's configuration guide](knowledge-configuration.md). The BE-009 foundation
 supplies and HTTP-tests the shared security gates
 without publishing fake business routes or manual-journal commands. Future handlers
