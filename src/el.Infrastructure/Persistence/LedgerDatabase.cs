@@ -20,4 +20,10 @@ public static class LedgerDatabase
 
     /// <summary>Finalization was requested for a missing or already finalized entry.</summary>
     public const string InvalidFinalization = "EL105";
+
+    /// <summary>An escrow hold transition other than a full release (refunds arrive with BE-012.2).</summary>
+    public const string UnsupportedEscrowTransition = "EL401";
+
+    /// <summary>An escrow release does not match its hold or its Dr Escrow / Cr Payable journal entry.</summary>
+    public const string InvalidEscrowRelease = "EL402";
 }

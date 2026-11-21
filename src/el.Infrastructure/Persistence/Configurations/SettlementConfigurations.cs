@@ -53,3 +53,16 @@ internal sealed class SettlementCommandConfiguration : IEntityTypeConfiguration<
         b.HasOne<SettlementRecord>().WithMany().HasForeignKey(row => row.SettlementId).OnDelete(DeleteBehavior.Restrict);
     }
 }
+internal sealed class EscrowHoldTransitionConfiguration : IEntityTypeConfiguration<EscrowHoldTransitionRecord>
+{
+    public void Configure(EntityTypeBuilder<EscrowHoldTransitionRecord> b)
+    {
+        b.ToTable("escrow_hold_transitions", table => table.HasCheckConstraint("ck_escrow_hold_transition",
+            "state IN ('Released','Refunded') AND amount_minor BETWEEN 1 AND 99999999999 AND isfinite(occurred_at_utc)"));
+        // One transition per hold: a hold is released or refunded at most once.
+        b.HasKey(row => row.HoldId); b.Property(row => row.HoldId).ValueGeneratedNever(); SettlementColumns.Map(b);
+        b.HasOne<EscrowHoldRecord>().WithMany().HasForeignKey(row => row.HoldId).OnDelete(DeleteBehavior.Restrict);
+        // Each release has its own journal entry; refunds (BE-012.2) may share one reversal entry.
+        b.HasIndex(row => row.JournalEntryId).IsUnique().HasFilter("state = 'Released'").HasDatabaseName("ux_escrow_release_journal");
+    }
+}

@@ -1,3 +1,4 @@
+using el.Api.Escrow;
 using el.Api.Contracts;
 using el.Api.Errors;
 using el.Domain.Common;
@@ -71,6 +72,7 @@ app.MapIdentityEndpoints();
 app.MapLedgerEndpoints();
 app.MapKnowledgeEndpoints();
 app.MapSettlementEndpoints();
+app.MapEscrowEndpoints();
 
 if (app.Environment.IsDevelopment())
 {
