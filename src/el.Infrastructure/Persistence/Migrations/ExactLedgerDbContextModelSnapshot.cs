@@ -1062,6 +1062,47 @@ namespace el.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("el.Infrastructure.Persistence.EscrowHoldTransitionRecord", b =>
+                {
+                    b.Property<Guid>("HoldId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("hold_id");
+
+                    b.Property<long>("AmountMinor")
+                        .HasColumnType("bigint")
+                        .HasColumnName("amount_minor");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("currency");
+
+                    b.Property<Guid>("JournalEntryId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("journal_entry_id");
+
+                    b.Property<DateTimeOffset>("OccurredAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("occurred_at_utc");
+
+                    b.Property<string>("State")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("state");
+
+                    b.HasKey("HoldId");
+
+                    b.HasIndex("JournalEntryId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_escrow_release_journal")
+                        .HasFilter("state = 'Released'");
+
+                    b.ToTable("escrow_hold_transitions", "ledger", t =>
+                        {
+                            t.HasCheckConstraint("ck_escrow_hold_transition", "state IN ('Released','Refunded') AND amount_minor BETWEEN 1 AND 99999999999 AND isfinite(occurred_at_utc)");
+                        });
+                });
+
             modelBuilder.Entity("el.Infrastructure.Persistence.JournalEntryRecord", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1477,6 +1518,15 @@ namespace el.Infrastructure.Persistence.Migrations
                     b.HasOne("el.Infrastructure.Persistence.SettlementAllocationRecord", null)
                         .WithMany()
                         .HasForeignKey("SettlementId", "AllocationOrdinal")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("el.Infrastructure.Persistence.EscrowHoldTransitionRecord", b =>
+                {
+                    b.HasOne("el.Infrastructure.Persistence.EscrowHoldRecord", null)
+                        .WithMany()
+                        .HasForeignKey("HoldId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });

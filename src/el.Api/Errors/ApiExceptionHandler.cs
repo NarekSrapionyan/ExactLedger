@@ -23,6 +23,7 @@ internal sealed class ApiExceptionHandler(ILogger<ApiExceptionHandler> logger) :
         {
             SettlementValidationException settlement => (400, settlement.Code),
             SettlementConflictException settlement => (409, settlement.Code),
+            EscrowHoldException escrow => (409, escrow.Code),
             KnowledgeException knowledge => (knowledge.Failure switch
             { KnowledgeFailure.Invalid => 400, KnowledgeFailure.NotFound => 404, _ => 409 }, knowledge.Code),
             BadHttpRequestException { InnerException: MoneyJsonException money } => (400, money.Code),

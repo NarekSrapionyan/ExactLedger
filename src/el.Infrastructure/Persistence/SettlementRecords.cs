@@ -48,3 +48,16 @@ internal sealed class SettlementCommandRecord
     public string RequestHash { get; set; } = null!;
     public Guid SettlementId { get; set; }
 }
+/// <summary>
+/// The one state change of an escrow hold. Holds stay immutable; a hold's effective state is
+/// Held until a transition row exists (see the ledger.escrow_hold_status view).
+/// </summary>
+internal sealed class EscrowHoldTransitionRecord
+{
+    public Guid HoldId { get; set; }
+    public string State { get; set; } = "Released";
+    public Guid JournalEntryId { get; set; }
+    public string Currency { get; set; } = null!;
+    public long AmountMinor { get; set; }
+    public DateTimeOffset OccurredAtUtc { get; set; }
+}
