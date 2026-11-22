@@ -52,7 +52,7 @@ public static class ApiDocumentationExtensions
             });
             options.AddOperationTransformer((operation, context, _) =>
             {
-                if (context.Description.ActionDescriptor.EndpointMetadata.OfType<IEndpointNameMetadata>().Any(item => item.EndpointName == "SubmitSettlement"))
+                if (context.Description.ActionDescriptor.EndpointMetadata.OfType<IEndpointNameMetadata>().Any(item => item.EndpointName is "SubmitSettlement" or "RefundSettlement"))
                 {
                     operation.Parameters ??= new List<IOpenApiParameter>();
                     operation.Parameters.Add(new OpenApiParameter

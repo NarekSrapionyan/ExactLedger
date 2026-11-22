@@ -179,7 +179,13 @@ public sealed class RefundApiTests(PostgreSqlFixture database)
         await Assert.ThrowsAsync<SettlementNotFoundException>(() => scope.ServiceProvider.GetRequiredService<RefundService>()
             .RefundAsync("another-client", settlement.Id, Usd(25000), "refund-1", CancellationToken.None));
 
+        using var foreignPost = await SendAsync(host, "integrator-other", HttpMethod.Post,
+            $"/v1/settlements/{settlement.Id}/refund", new RefundRequest(Usd(25000)), "foreign-refund");
+        Assert.Equal(HttpStatusCode.NotFound, foreignPost.StatusCode);
+
         await RefundAsync(host, settlement.Id, 25000, "refund-1");
+        using var foreignRead = await SendAsync(host, "integrator-other", HttpMethod.Get, $"/v1/settlements/{settlement.Id}/refund");
+        Assert.Equal(HttpStatusCode.NotFound, foreignRead.StatusCode);
         using var payee = await SendAsync(host, "payee-seller-1", HttpMethod.Get, $"/v1/settlements/{settlement.Id}/refund");
         Assert.Equal(HttpStatusCode.NotFound, payee.StatusCode);
     }
