@@ -7,8 +7,8 @@ this task adds the full release of due holds.
 | --- | --- |
 | POST /v1/escrow/holds/{id}/release | Finance Operator or Scheduler. Releases one due hold in full; repeating returns the original result (200). |
 | POST /v1/escrow/releases | Finance Operator or Scheduler. Scheduler entry point: releases every hold due now, oldest first (up to 500 per run). |
-| GET /v1/escrow/holds/{id} | Finance Operator or Auditor. One hold and its effective state. |
-| GET /v1/escrow/holds?settlementId={id} | Finance Operator or Auditor. The holds created by one settlement. |
+| GET /v1/escrow/holds/{id} | Finance Operator/Auditor, or owning Payee. One hold and its effective state; foreign holds return 404. |
+| GET /v1/escrow/holds?settlementId={id} | Finance Operator/Auditor; Payee sees only their own holds, filtered by the signed party binding. |
 
 ## Rules
 

@@ -183,12 +183,39 @@ public sealed class EscrowApiTests(PostgreSqlFixture database)
         using var auditorRead = await SendAsync(host, "auditor", HttpMethod.Get, $"/v1/escrow/holds/{hold.Id}");
         Assert.Equal(HttpStatusCode.OK, auditorRead.StatusCode);
         using var payeeRead = await SendAsync(host, "payee-seller-1", HttpMethod.Get, $"/v1/escrow/holds/{hold.Id}");
-        Assert.Equal(HttpStatusCode.Forbidden, payeeRead.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, payeeRead.StatusCode);
 
         using var missingRelease = await SendAsync(host, "finance", HttpMethod.Post, $"/v1/escrow/holds/{Guid.NewGuid()}/release");
         using var missingRead = await SendAsync(host, "finance", HttpMethod.Get, $"/v1/escrow/holds/{Guid.NewGuid()}");
         Assert.Equal(HttpStatusCode.NotFound, missingRelease.StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, missingRead.StatusCode);
+    }
+
+    [Fact]
+    public async Task Payees_read_only_their_own_holds_even_in_a_shared_settlement()
+    {
+        await using var host = await IdentityApiHost.CreateAsync(database);
+        var profile = await PublishProfileAsync(host, escrow: true);
+        var trade = new TradeRequest("T-OWNERS", Today.AddDays(-1), "USD", Usd(25000), "DEMO-NONE",
+            profile.ProfileId, profile.CorporateCode,
+            [new("seller-1", SyntheticSeed.SellerOne.Id.Value, "Weight", 1, 0),
+             new("seller-2", SyntheticSeed.SellerTwo.Id.Value, "Weight", 1, 0)]);
+        using var submitted = await SendAsync(host, "integrator", HttpMethod.Post, "/v1/settlements", trade, "owners-command");
+        Assert.Equal(HttpStatusCode.Created, submitted.StatusCode);
+        var settlement = (await submitted.Content.ReadFromJsonAsync<FullSettlementResponse>(Json))!;
+        var all = await HoldsAsync(host, settlement.Id);
+        Assert.Equal(2, all.Length);
+        foreach (var (user, party) in new[] { ("payee-seller-1", SyntheticSeed.SellerOne.Id.Value), ("payee-seller-2", SyntheticSeed.SellerTwo.Id.Value) })
+        {
+            var own = all.Single(hold => hold.PartyId == party);
+            var foreign = all.Single(hold => hold.PartyId != party);
+            using var list = await SendAsync(host, user, HttpMethod.Get, $"/v1/escrow/holds?settlementId={settlement.Id}&partyId={foreign.PartyId}");
+            Assert.Equal(HttpStatusCode.OK, list.StatusCode);
+            var row = Assert.Single((await list.Content.ReadFromJsonAsync<EscrowHoldResponse[]>(Json))!);
+            Assert.Equal(own.Id, row.Id);
+            using var denied = await SendAsync(host, user, HttpMethod.Get, $"/v1/escrow/holds/{foreign.Id}?partyId={party}");
+            Assert.Equal(HttpStatusCode.NotFound, denied.StatusCode);
+        }
     }
 
     [Fact]
