@@ -1,4 +1,5 @@
 using el.Application.Security;
+using el.Api.Authentication;
 using el.Application.Settlements;
 using el.Domain.Common;
 using el.Domain.Settlements;
@@ -26,9 +27,9 @@ public static class EscrowEndpoints
     {
         var group = endpoints.MapGroup("/v1/escrow").WithTags("Escrow");
         group.MapGet("/holds/{id:guid}", ReadHoldAsync).WithName("ReadEscrowHold")
-            .RequireAuthorization(Permission.ReadLedger.ToString()).Produces<EscrowHoldResponse>();
+            .RequireAuthorization(Permission.ReadBalancesAndPayouts.ToString()).Produces<EscrowHoldResponse>();
         group.MapGet("/holds", ListHoldsAsync).WithName("ListEscrowHolds")
-            .RequireAuthorization(Permission.ReadLedger.ToString()).Produces<IReadOnlyList<EscrowHoldResponse>>();
+            .RequireAuthorization(Permission.ReadBalancesAndPayouts.ToString()).Produces<IReadOnlyList<EscrowHoldResponse>>();
         group.MapPost("/holds/{id:guid}/release", ReleaseAsync).WithName("ReleaseEscrowHold")
             .RequireAuthorization(Permission.ReleaseEscrow.ToString()).Produces<EscrowReleaseResponse>();
         group.MapPost("/releases", ReleaseDueAsync).WithName("ReleaseDueEscrowHolds")
@@ -38,15 +39,20 @@ public static class EscrowEndpoints
     }
 
     /// <summary>Read one hold and its effective state.</summary>
-    public static async Task<IResult> ReadHoldAsync(Guid id, IEscrowStore store, CancellationToken ct)
+    public static async Task<IResult> ReadHoldAsync(Guid id, HttpContext context, IEscrowStore store, CancellationToken ct)
     {
         var hold = await store.GetHoldAsync(id, ct);
-        return hold is null ? Results.NotFound() : Results.Ok(ToResponse(hold));
+        return hold is null || !ResourceAccess.Party(RequestIdentity.Get(context), hold.PartyId)
+            ? Results.NotFound() : Results.Ok(ToResponse(hold));
     }
 
     /// <summary>List the holds created by one settlement.</summary>
-    public static async Task<IResult> ListHoldsAsync(Guid settlementId, IEscrowStore store, CancellationToken ct) =>
-        Results.Ok((await store.HoldsForSettlementAsync(settlementId, ct)).Select(ToResponse).ToArray());
+    public static async Task<IResult> ListHoldsAsync(Guid settlementId, HttpContext context, IEscrowStore store, CancellationToken ct)
+    {
+        var identity = RequestIdentity.Get(context);
+        return Results.Ok((await store.HoldsForSettlementAsync(settlementId, ct))
+            .Where(hold => ResourceAccess.Party(identity, hold.PartyId)).Select(ToResponse).ToArray());
+    }
 
     /// <summary>
     /// Release one due hold in full (Dr Escrow / Cr Payable). Repeating the call returns the original
