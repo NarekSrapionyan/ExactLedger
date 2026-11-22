@@ -21,10 +21,10 @@ namespace el.IntegrationTests;
 [Trait("Category", PostgreSqlCollection.Category)]
 public sealed class EscrowApiTests(PostgreSqlFixture database)
 {
-    private static readonly DateTimeOffset Today = new(DateTime.UtcNow.Date, TimeSpan.Zero);
-    private static readonly JsonSerializerOptions Json = CreateJson();
-    private const string EscrowCode = "ESCROW.SELLER-1.USD";
-    private const string PayableCode = "PAYABLE.SELLER-1.USD";
+    internal static readonly DateTimeOffset Today = new(DateTime.UtcNow.Date, TimeSpan.Zero);
+    internal static readonly JsonSerializerOptions Json = CreateJson();
+    internal const string EscrowCode = "ESCROW.SELLER-1.USD";
+    internal const string PayableCode = "PAYABLE.SELLER-1.USD";
 
     private static JsonSerializerOptions CreateJson()
     {
@@ -33,9 +33,9 @@ public sealed class EscrowApiTests(PostgreSqlFixture database)
         return options;
     }
 
-    private static Money Usd(long minor) => Money.FromMinorUnits(minor, CurrencyReferenceData.Usd);
+    internal static Money Usd(long minor) => Money.FromMinorUnits(minor, CurrencyReferenceData.Usd);
 
-    private static Guid AccountId(string code) => SyntheticSeed.Accounts.Single(account => account.Code.Value == code).Id.Value;
+    internal static Guid AccountId(string code) => SyntheticSeed.Accounts.Single(account => account.Code.Value == code).Id.Value;
 
     [Fact]
     public async Task A_due_hold_is_released_in_full_once_and_balances_reconcile_exactly()
@@ -233,7 +233,8 @@ public sealed class EscrowApiTests(PostgreSqlFixture database)
         var refunded = await Assert.ThrowsAsync<PostgresException>(() => RuntimeSqlAsync(host, string.Format(System.Globalization.CultureInfo.InvariantCulture, insert, "Refunded")));
 
         Assert.Equal(LedgerDatabase.InvalidEscrowRelease, wrongJournal.SqlState);
-        Assert.Equal(LedgerDatabase.UnsupportedEscrowTransition, refunded.SqlState);
+        // A Refunded transition is only valid with a matching settlement refund (BE-012.2).
+        Assert.Equal(LedgerDatabase.InvalidEscrowRelease, refunded.SqlState);
 
         await ReleaseAsync(host, hold.Id);
         var runtimeUpdate = await Assert.ThrowsAsync<PostgresException>(() => RuntimeSqlAsync(host, "UPDATE ledger.escrow_hold_transitions SET amount_minor = 1"));
@@ -242,7 +243,7 @@ public sealed class EscrowApiTests(PostgreSqlFixture database)
         Assert.Equal(LedgerDatabase.HistoryImmutable, ownerDelete.SqlState);
     }
 
-    private static async Task AssertEscrowReconcilesAsync(IdentityApiHost host)
+    internal static async Task AssertEscrowReconcilesAsync(IdentityApiHost host)
     {
         // Every escrow account's balance equals the sum of its holds that are still Held.
         Assert.Equal(0L, await host.ScalarAsync<long>("""
@@ -256,12 +257,12 @@ public sealed class EscrowApiTests(PostgreSqlFixture database)
             """));
     }
 
-    private static Task<decimal> CreditBalanceAsync(IdentityApiHost host, string accountCode) => host.ScalarAsync<decimal>($"""
+    internal static Task<decimal> CreditBalanceAsync(IdentityApiHost host, string accountCode) => host.ScalarAsync<decimal>($"""
         SELECT COALESCE(sum(CASE l.side WHEN 2 THEN l.amount_minor ELSE -l.amount_minor END), 0)
           FROM ledger.journal_lines l JOIN ledger.accounts a ON a.id = l.account_id WHERE a.code = '{accountCode}'
         """);
 
-    private static async Task RuntimeSqlAsync(IdentityApiHost host, string sql)
+    internal static async Task RuntimeSqlAsync(IdentityApiHost host, string sql)
     {
         await using var connection = new NpgsqlConnection(host.RuntimeConnection);
         await connection.OpenAsync();
@@ -269,7 +270,7 @@ public sealed class EscrowApiTests(PostgreSqlFixture database)
         await command.ExecuteNonQueryAsync();
     }
 
-    private static async Task<(Guid ProfileId, string CorporateCode)> PublishProfileAsync(IdentityApiHost host, bool escrow)
+    internal static async Task<(Guid ProfileId, string CorporateCode)> PublishProfileAsync(IdentityApiHost host, bool escrow)
     {
         var held = escrow ? 2050 : 0;
         var profile = new ProfileRequest(Guid.NewGuid(), 1, "demo-client-1", escrow ? "ESCROW-USD" : "NO-ESCROW-USD", "USD",
@@ -285,7 +286,7 @@ public sealed class EscrowApiTests(PostgreSqlFixture database)
         return (profile.ProfileId, profile.CorporateCode);
     }
 
-    private static async Task<FullSettlementResponse> SubmitAsync(IdentityApiHost host, (Guid ProfileId, string CorporateCode) profile,
+    internal static async Task<FullSettlementResponse> SubmitAsync(IdentityApiHost host, (Guid ProfileId, string CorporateCode) profile,
         string tradeId, DateTimeOffset occurredAt, string key = "command-1")
     {
         var trade = new TradeRequest(tradeId, occurredAt, "USD", Usd(25000), "DEMO-NONE", profile.ProfileId, profile.CorporateCode,
@@ -295,35 +296,35 @@ public sealed class EscrowApiTests(PostgreSqlFixture database)
         return (await response.Content.ReadFromJsonAsync<FullSettlementResponse>(Json))!;
     }
 
-    private static async Task<EscrowHoldResponse[]> HoldsAsync(IdentityApiHost host, Guid settlementId)
+    internal static async Task<EscrowHoldResponse[]> HoldsAsync(IdentityApiHost host, Guid settlementId)
     {
         using var response = await SendAsync(host, "finance", HttpMethod.Get, $"/v1/escrow/holds?settlementId={settlementId}");
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         return (await response.Content.ReadFromJsonAsync<EscrowHoldResponse[]>(Json))!;
     }
 
-    private static async Task<EscrowHoldResponse> ReadHoldAsync(IdentityApiHost host, Guid holdId)
+    internal static async Task<EscrowHoldResponse> ReadHoldAsync(IdentityApiHost host, Guid holdId)
     {
         using var response = await SendAsync(host, "finance", HttpMethod.Get, $"/v1/escrow/holds/{holdId}");
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         return (await response.Content.ReadFromJsonAsync<EscrowHoldResponse>(Json))!;
     }
 
-    private static async Task<EscrowReleaseResponse> ReleaseAsync(IdentityApiHost host, Guid holdId)
+    internal static async Task<EscrowReleaseResponse> ReleaseAsync(IdentityApiHost host, Guid holdId)
     {
         using var response = await SendAsync(host, "finance", HttpMethod.Post, $"/v1/escrow/holds/{holdId}/release");
         Assert.True(response.StatusCode == HttpStatusCode.OK, await response.Content.ReadAsStringAsync());
         return (await response.Content.ReadFromJsonAsync<EscrowReleaseResponse>(Json))!;
     }
 
-    private static async Task<DueEscrowReleaseResponse> RunSchedulerAsync(IdentityApiHost host)
+    internal static async Task<DueEscrowReleaseResponse> RunSchedulerAsync(IdentityApiHost host)
     {
         using var response = await SendAsync(host, "scheduler", HttpMethod.Post, "/v1/escrow/releases");
         Assert.True(response.StatusCode == HttpStatusCode.OK, await response.Content.ReadAsStringAsync());
         return (await response.Content.ReadFromJsonAsync<DueEscrowReleaseResponse>(Json))!;
     }
 
-    private static async Task<HttpResponseMessage> SendAsync(IdentityApiHost host, string user, HttpMethod method, string path,
+    internal static async Task<HttpResponseMessage> SendAsync(IdentityApiHost host, string user, HttpMethod method, string path,
         object? body = null, string? key = null)
     {
         using var request = new HttpRequestMessage(method, path);
@@ -333,7 +334,7 @@ public sealed class EscrowApiTests(PostgreSqlFixture database)
         return await host.Client.SendAsync(request);
     }
 
-    private static async Task ErrorAsync(HttpResponseMessage response, HttpStatusCode status, string code)
+    internal static async Task ErrorAsync(HttpResponseMessage response, HttpStatusCode status, string code)
     {
         Assert.Equal(status, response.StatusCode);
         using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());

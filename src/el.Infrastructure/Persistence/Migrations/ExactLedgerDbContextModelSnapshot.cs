@@ -1399,6 +1399,62 @@ namespace el.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("el.Infrastructure.Persistence.SettlementRefundRecord", b =>
+                {
+                    b.Property<Guid>("SettlementId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("settlement_id");
+
+                    b.Property<long>("AmountMinor")
+                        .HasColumnType("bigint")
+                        .HasColumnName("amount_minor");
+
+                    b.Property<string>("ClientId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("client_id");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("currency");
+
+                    b.Property<string>("IdempotencyKey")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("idempotency_key");
+
+                    b.Property<Guid>("JournalEntryId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("journal_entry_id");
+
+                    b.Property<DateTimeOffset>("RefundedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("refunded_at_utc");
+
+                    b.Property<string>("RequestHash")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("request_hash");
+
+                    b.HasKey("SettlementId");
+
+                    b.HasIndex("JournalEntryId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_settlement_refund_journal");
+
+                    b.HasIndex("ClientId", "IdempotencyKey")
+                        .IsUnique()
+                        .HasDatabaseName("ux_settlement_refund_key");
+
+                    b.HasIndex("SettlementId", "Currency");
+
+                    b.ToTable("settlement_refunds", "ledger", t =>
+                        {
+                            t.HasCheckConstraint("ck_settlement_refund", "amount_minor BETWEEN 1 AND 99999999999 AND length(client_id) BETWEEN 1 AND 100 AND length(idempotency_key) BETWEEN 1 AND 128 AND request_hash ~ '^[0-9a-f]{64}$' AND isfinite(refunded_at_utc)");
+                        });
+                });
+
             modelBuilder.Entity("el.Infrastructure.Security.IdentityRecord", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1582,6 +1638,16 @@ namespace el.Infrastructure.Persistence.Migrations
                     b.HasOne("el.Infrastructure.Persistence.SettlementRecord", null)
                         .WithMany()
                         .HasForeignKey("SettlementId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("el.Infrastructure.Persistence.SettlementRefundRecord", b =>
+                {
+                    b.HasOne("el.Infrastructure.Persistence.SettlementRecord", null)
+                        .WithMany()
+                        .HasForeignKey("SettlementId", "Currency")
+                        .HasPrincipalKey("Id", "Currency")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });

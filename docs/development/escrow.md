@@ -14,7 +14,7 @@ this task adds the full release of due holds.
 
 - A hold is released only when its state is Held and the server's UTC time has reached `dueAtUtc`
   (the trade's `occurredAt` plus the profile's hold days). Earlier calls return 409 `HOLD_NOT_DUE`;
-  a refunded hold returns 409 `HOLD_NOT_RELEASABLE`.
+  a hold refunded with its settlement ([refunds](refunds.md)) returns 409 `HOLD_NOT_RELEASABLE`.
 - The beneficiary party and its escrow and payable accounts must be active. Otherwise the manual
   call returns 409 `PARTY_NOT_ACTIVE` or `ACCOUNT_NOT_POSTABLE`, and the scheduler run skips the
   hold, reports it under `skipped` and retries it on the next run.
@@ -30,10 +30,11 @@ this task adds the full release of due holds.
 Hold rows stay immutable. Each state change is one insert-only row in `ledger.escrow_hold_transitions`,
 keyed by hold ID, so a hold can leave Held only once. A deferred database check verifies at commit that
 a release has exactly two lines (Dr the hold's escrow account, Cr its payable account) for exactly the
-held amount, is not earlier than the due time and uses a finalized, non-reversal entry
-(`EL402`); other transitions are rejected until refunds arrive with BE-012.2 (`EL401`). The runtime role
+held amount, is not earlier than the due time, uses a finalized, non-reversal entry and its settlement
+was not refunded (`EL402`). `Refunded` transitions are written by [refunds](refunds.md); unknown states are
+rejected (`EL401`). The runtime role
 can only insert and read transitions; updates and deletes are rejected for every role.
 
-`ledger.escrow_hold_status` shows each hold's effective state (`Held`, `Released`, later `Refunded`)
+`ledger.escrow_hold_status` shows each hold's effective state (`Held`, `Released` or `Refunded`)
 and released amount. At any time, each escrow account's balance equals the sum of its holds that are
 still Held; the integration tests check this after every release.

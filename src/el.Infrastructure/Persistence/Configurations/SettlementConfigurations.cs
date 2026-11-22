@@ -66,3 +66,18 @@ internal sealed class EscrowHoldTransitionConfiguration : IEntityTypeConfigurati
         b.HasIndex(row => row.JournalEntryId).IsUnique().HasFilter("state = 'Released'").HasDatabaseName("ux_escrow_release_journal");
     }
 }
+internal sealed class SettlementRefundConfiguration : IEntityTypeConfiguration<SettlementRefundRecord>
+{
+    public void Configure(EntityTypeBuilder<SettlementRefundRecord> b)
+    {
+        b.ToTable("settlement_refunds", table => table.HasCheckConstraint("ck_settlement_refund",
+            "amount_minor BETWEEN 1 AND 99999999999 AND length(client_id) BETWEEN 1 AND 100 AND length(idempotency_key) BETWEEN 1 AND 128 " +
+            "AND request_hash ~ '^[0-9a-f]{64}$' AND isfinite(refunded_at_utc)"));
+        // One refund per settlement.
+        b.HasKey(row => row.SettlementId); b.Property(row => row.SettlementId).ValueGeneratedNever(); SettlementColumns.Map(b);
+        b.HasOne<SettlementRecord>().WithMany().HasForeignKey(row => new { row.SettlementId, row.Currency })
+            .HasPrincipalKey(row => new { row.Id, row.Currency }).OnDelete(DeleteBehavior.Restrict);
+        b.HasIndex(row => new { row.ClientId, row.IdempotencyKey }).IsUnique().HasDatabaseName("ux_settlement_refund_key");
+        b.HasIndex(row => row.JournalEntryId).IsUnique().HasDatabaseName("ux_settlement_refund_journal");
+    }
+}
