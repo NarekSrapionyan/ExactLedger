@@ -657,17 +657,12 @@ public sealed partial class ClearingApiTests(PostgreSqlFixture database)
         var services = new ServiceCollection();
         services.AddInfrastructure(host.RuntimeConnection);
 
-        var auditDescriptor = services.Last(item => item.ServiceType == typeof(IAuditTrail));
-        services.Remove(auditDescriptor);
-
-        services.Add(ServiceDescriptor.Describe(
-            typeof(IAuditTrail),
-            provider =>
-            {
-                var inner = (IAuditTrail)ActivatorUtilities.CreateInstance(provider, auditDescriptor.ImplementationType!);
-                return new FailingAudit(inner, failingOperation);
-            },
-            auditDescriptor.Lifetime));
+        var original = services.Last(item => item.ServiceType == typeof(IAuditTrail));
+        var factory = original.ImplementationFactory
+            ?? throw new InvalidOperationException("IAuditTrail must be registered with a factory.");
+        services.Remove(original);
+        services.AddScoped<IAuditTrail>(provider =>
+            new FailingAudit((IAuditTrail)factory(provider), failingOperation));
 
         return services.BuildServiceProvider();
     }
