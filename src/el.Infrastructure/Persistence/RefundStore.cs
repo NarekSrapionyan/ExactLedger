@@ -36,8 +36,13 @@ internal sealed class RefundStore(ExactLedgerDbContext db) : IRefundStore
 
         db.Add(new SettlementRefundRecord
         {
-            SettlementId = refund.SettlementId, ClientId = refund.ClientId, IdempotencyKey = key, RequestHash = requestHash,
-            JournalEntryId = refund.JournalEntryId, Currency = refund.Currency, AmountMinor = refund.AmountMinor,
+            SettlementId = refund.SettlementId,
+            ClientId = refund.ClientId,
+            IdempotencyKey = key,
+            RequestHash = requestHash,
+            JournalEntryId = refund.JournalEntryId,
+            Currency = refund.Currency,
+            AmountMinor = refund.AmountMinor,
             RefundedAtUtc = refund.RefundedAtUtc,
         });
 
@@ -48,8 +53,12 @@ internal sealed class RefundStore(ExactLedgerDbContext db) : IRefundStore
         {
             db.Add(new EscrowHoldTransitionRecord
             {
-                HoldId = hold.Id, State = "Refunded", JournalEntryId = refund.JournalEntryId,
-                Currency = hold.Currency, AmountMinor = hold.OriginalHeldMinor, OccurredAtUtc = refund.RefundedAtUtc,
+                HoldId = hold.Id,
+                State = "Refunded",
+                JournalEntryId = refund.JournalEntryId,
+                Currency = hold.Currency,
+                AmountMinor = hold.OriginalHeldMinor,
+                OccurredAtUtc = refund.RefundedAtUtc,
             });
         }
     }
@@ -66,14 +75,4 @@ internal sealed class RefundStore(ExactLedgerDbContext db) : IRefundStore
         return new SettlementRefundResult(row.SettlementId, row.ClientId, row.JournalEntryId, settlement.JournalEntryId,
             row.Currency, row.AmountMinor, row.RefundedAtUtc.ToUniversalTime(), holdIds.AsReadOnly());
     }
-}
-
-/// <summary>
-/// No clearing batches exist before BE-013, so no settlement is assigned to one. BE-013.1 replaces this
-/// registration with a check against its batch membership; the shared monetary lock already keeps a
-/// refund and a batch cut from interleaving.
-/// </summary>
-internal sealed class NoSettlementBatchMembership : ISettlementBatchMembership
-{
-    public Task<bool> IsAssignedAsync(Guid settlementId, CancellationToken ct) => Task.FromResult(false);
 }

@@ -4,6 +4,7 @@ using el.Application.Ledger;
 using el.Domain.Ledger;
 using Microsoft.AspNetCore.Diagnostics;
 using el.Api.Contracts;
+using el.Application.Clearing;
 using el.Application.Knowledge;
 using el.Application.Settlements;
 using el.Domain.Settlements;
@@ -26,6 +27,8 @@ internal sealed class ApiExceptionHandler(ILogger<ApiExceptionHandler> logger) :
             EscrowHoldException escrow => (409, escrow.Code),
             RefundException { Code: RefundException.AmountMismatch } refund => (400, refund.Code),
             RefundException refund => (409, refund.Code),
+            ClearingException clearing => (clearing.Failure switch
+            { ClearingFailure.Invalid => 400, ClearingFailure.NotFound => 404, _ => 409 }, clearing.Code),
             KnowledgeException knowledge => (knowledge.Failure switch
             { KnowledgeFailure.Invalid => 400, KnowledgeFailure.NotFound => 404, _ => 409 }, knowledge.Code),
             BadHttpRequestException { InnerException: MoneyJsonException money } => (400, money.Code),
@@ -48,6 +51,15 @@ internal sealed class ApiExceptionHandler(ILogger<ApiExceptionHandler> logger) :
         {
             logger.LogError("API request failed ({ErrorType}). CorrelationId: {CorrelationId}",
                 exception.GetType().Name, context.TraceIdentifier);
+        }
+
+        if (exception is ClearingException { Details: { Count: > 0 } details })
+        {
+            var problem = ApiErrorResponses.Create(context, status, code);
+            problem.Extensions["details"] = details;
+            await Results.Problem(problem).ExecuteAsync(context);
+
+            return true;
         }
 
         await ApiErrorResponses.WriteAsync(context, status, code);
