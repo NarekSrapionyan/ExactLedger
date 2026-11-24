@@ -5,7 +5,7 @@ chargebacks and post-batch recovery are out of scope.
 
 | Endpoint | Access / result |
 | --- | --- |
-| POST /v1/settlements/{id}/refund | Owning Integrator. Body `{"amount":{"amount":"250.00","currency":"USD"}}`, required Idempotency-Key. Returns 201; an identical retry returns the original 201 result. |
+| POST /v1/settlements/{id}/refund | Owning Integrator. Body `{"amount":{"amount":"250.00","currency":"USD"},"reason":"Synthetic order cancelled"}`, required Idempotency-Key. Returns 201; an identical retry returns the original 201 result. |
 | GET /v1/settlements/{id}/refund | Finance, Admin, Auditor and the owning Integrator. Other callers and missing refunds get 404. |
 
 ## Eligibility
@@ -14,7 +14,7 @@ Checked under the shared monetary lock, in this order:
 
 | Condition | Result |
 | --- | --- |
-| Same Idempotency-Key with a different amount | 409 `IDEMPOTENCY_CONFLICT` |
+| Same Idempotency-Key with a different amount or normalized reason | 409 `IDEMPOTENCY_CONFLICT` |
 | Settlement missing or owned by another client | 404 |
 | Settlement already refunded (with another key) | 409 `REFUND_ALREADY_EXISTS` |
 | Settlement assigned to a clearing batch | 409 `SETTLEMENT_IN_BATCH` |
@@ -25,6 +25,11 @@ Batch membership comes from `ISettlementBatchMembership`. A settlement is assign
 shared monetary lock, so a refund and a cut can never interleave.
 
 ## Reversal
+
+New refunds require a trimmed reason of 1–500 plain-text characters. It is stored
+with the immutable refund and returned on authorized reads/retries. Old refunds
+retain an unknown (NULL) reason and can replay their original reason-less command;
+see [acceptance contracts](backend-acceptance.md) for migration compatibility.
 
 The refund reads the original stored journal lines and posts them again with opposite sides, the same
 accounts and the same amounts, linked to the original entry (`reversal_of`) under the unique reference

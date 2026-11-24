@@ -64,6 +64,7 @@ internal sealed class EscrowHoldTransitionRecord
 /// <summary>A full refund of one settlement and its retained idempotency key (one refund per settlement).</summary>
 internal sealed class SettlementRefundRecord
 {
+    public string? Reason { get; set; }
     public Guid SettlementId { get; set; }
     public string ClientId { get; set; } = null!;
     public string IdempotencyKey { get; set; } = null!;

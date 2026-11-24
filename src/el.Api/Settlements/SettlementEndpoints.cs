@@ -6,6 +6,7 @@ using el.Application.Security;
 using el.Application.Settlements;
 using el.Domain.Common;
 using el.Domain.Settlements;
+using System.Text.Json.Serialization;
 
 namespace el.Api.Settlements;
 
@@ -36,12 +37,21 @@ public sealed record PayeeSettlementResponse(Guid Id, string Currency, IReadOnly
     IReadOnlyList<OwnTraceResponse> Trace);
 /// <summary>Replay uses stored input/configuration; generated request metadata is excluded from the result hash.</summary>
 public sealed record SettlementReplayResponse(Guid Id, string ResultHash, bool Matches);
+/// <summary>Recent settlement; Payees receive their own allocations instead of global gross and client/trade identifiers.</summary>
+public sealed record SettlementListItemResponse(Guid Id, DateTimeOffset PostedAtUtc, string Currency,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] Money? Gross,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? ClientId,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? TradeId,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] IReadOnlyList<OwnAllocationResponse>? Allocations);
+public sealed record SettlementPageResponse(IReadOnlyList<SettlementListItemResponse> Items, int Offset, int Limit, bool HasMore);
 
 public static class SettlementEndpoints
 {
     public static IEndpointRouteBuilder MapSettlementEndpoints(this IEndpointRouteBuilder endpoints)
     {
         var group = endpoints.MapGroup("/v1/settlements").WithTags("Settlements");
+        group.MapGet("/", ListAsync).WithName("ListSettlements").RequireAuthorization(Permission.ReadSettlement.ToString())
+            .Produces<SettlementPageResponse>();
         group.MapPost("/", SubmitAsync).WithName("SubmitSettlement").RequireAuthorization(Permission.SubmitTradeOrRefund.ToString())
             .Produces<FullSettlementResponse>(201);
         group.MapGet("/{id:guid}", ReadAsync).WithName("ReadSettlement").RequireAuthorization(Permission.ReadSettlement.ToString())
@@ -61,6 +71,29 @@ public static class SettlementEndpoints
             }
         });
         return endpoints;
+    }
+
+    /// <summary>List recent settlements with server-side client/Payee isolation (up to 100 per page).</summary>
+    public static async Task<IResult> ListAsync(string? currency, int? offset, int? limit, HttpContext context,
+        ISettlementQueries queries, CancellationToken ct)
+    {
+        var start = offset ?? 0; var count = limit ?? 50;
+        if (start < 0 || count is < 1 or > 100 || (currency is not null && currency is not ("USD" or "JPY" or "KWD")))
+            return ApiErrorResponses.Validation(context, new Dictionary<string, string[]> { ["filters"] = ["Use USD/JPY/KWD, a non-negative offset and a limit from 1 to 100."] });
+        var identity = RequestIdentity.Get(context);
+        var global = identity.Roles.Any(role => role is IdentityRoles.FinanceOperator or IdentityRoles.ConfigurationAdministrator or IdentityRoles.Auditor);
+        var scope = new SettlementVisibility(global, identity.Roles.Contains(IdentityRoles.Integrator) ? identity.ClientId : null,
+            identity.Roles.Contains(IdentityRoles.Payee) ? identity.PartyId : null);
+        var rows = await queries.ListAsync(scope, currency, start, count + 1, ct);
+        var items = rows.Take(count).Select(s =>
+        {
+            var code = CurrencyCode.Parse(s.Currency);
+            var full = global || (scope.ClientId is not null && scope.ClientId == s.ClientId);
+            return new SettlementListItemResponse(s.Id, s.PostedAtUtc, s.Currency,
+                full ? Money.FromMinorUnits(s.GrossMinor, code) : null, full ? s.ClientId : null, full ? s.TradeId : null,
+                full ? null : s.OwnAllocations.Select(a => new OwnAllocationResponse(a.Component, Money.FromMinorUnits(a.AmountMinor, code))).ToArray());
+        }).ToArray();
+        return Results.Ok(new SettlementPageResponse(items, start, count, rows.Count > count));
     }
 
     /// <summary>Settle a captured trade atomically. Idempotency-Key is required; identical retries return the original 201 result.</summary>

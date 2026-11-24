@@ -75,6 +75,7 @@ internal sealed class SettlementRefundConfiguration : IEntityTypeConfiguration<S
             "AND request_hash ~ '^[0-9a-f]{64}$' AND isfinite(refunded_at_utc)"));
         // One refund per settlement.
         b.HasKey(row => row.SettlementId); b.Property(row => row.SettlementId).ValueGeneratedNever(); SettlementColumns.Map(b);
+        b.Property(row => row.Reason).HasMaxLength(500);
         b.HasOne<SettlementRecord>().WithMany().HasForeignKey(row => new { row.SettlementId, row.Currency })
             .HasPrincipalKey(row => new { row.Id, row.Currency }).OnDelete(DeleteBehavior.Restrict);
         b.HasIndex(row => new { row.ClientId, row.IdempotencyKey }).IsUnique().HasDatabaseName("ux_settlement_refund_key");

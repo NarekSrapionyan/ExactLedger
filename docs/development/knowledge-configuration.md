@@ -9,6 +9,10 @@ Use the [local Docker setup](local-docker.md) and sign in as `admin` using your
 configured seed password. `auditor` can inspect configuration but cannot change it.
 The combined `demo-admin` identity has the administrator permission as well.
 
+Participant registration and account mapping lookup are documented in
+[backend acceptance contracts](backend-acceptance.md). Admin can create new
+participants with complete currency accounts; this does not grant login roles.
+
 | Routes | Access and behavior |
 | --- | --- |
 | GET /v1/regions, /v1/deduction-types | Admin/Auditor: list taxonomy |

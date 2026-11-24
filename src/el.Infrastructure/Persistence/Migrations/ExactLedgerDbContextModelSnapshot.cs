@@ -1428,6 +1428,11 @@ namespace el.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("journal_entry_id");
 
+                    b.Property<string>("Reason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("reason");
+
                     b.Property<DateTimeOffset>("RefundedAtUtc")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("refunded_at_utc");

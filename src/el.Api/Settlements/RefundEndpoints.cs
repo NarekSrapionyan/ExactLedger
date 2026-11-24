@@ -6,12 +6,12 @@ using el.Domain.Settlements;
 
 namespace el.Api.Settlements;
 
-/// <summary>A full refund request. The amount must equal the settlement's gross amount.</summary>
-public sealed record RefundRequest(Money Amount);
+/// <summary>A full refund request. New refunds require a reason (1–500 characters); amount must equal gross.</summary>
+public sealed record RefundRequest(Money Amount, string? Reason = null);
 
 /// <summary>The stored refund, also returned for an identical retry with the same Idempotency-Key.</summary>
 public sealed record RefundResponse(Guid SettlementId, Guid JournalEntryId, Guid OriginalJournalEntryId, Money Amount,
-    DateTimeOffset RefundedAtUtc, IReadOnlyList<Guid> RefundedHoldIds);
+    DateTimeOffset RefundedAtUtc, IReadOnlyList<Guid> RefundedHoldIds, string? Reason = null);
 
 public static class RefundEndpoints
 {
@@ -40,7 +40,7 @@ public static class RefundEndpoints
 
         try
         {
-            var refund = await service.RefundAsync(identity.ClientId!, id, request.Amount, keys[0]!, ct);
+            var refund = await service.RefundAsync(identity.ClientId!, id, request.Amount, keys[0]!, ct, request.Reason);
             return Results.Created($"/v1/settlements/{id}/refund", ToResponse(refund));
         }
         catch (SettlementNotFoundException)
@@ -64,5 +64,5 @@ public static class RefundEndpoints
 
     private static RefundResponse ToResponse(SettlementRefundResult refund) => new(refund.SettlementId, refund.JournalEntryId,
         refund.OriginalJournalEntryId, Money.FromMinorUnits(refund.AmountMinor, CurrencyCode.Parse(refund.Currency)),
-        refund.RefundedAtUtc, refund.RefundedHoldIds);
+        refund.RefundedAtUtc, refund.RefundedHoldIds, refund.Reason);
 }

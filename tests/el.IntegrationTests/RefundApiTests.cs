@@ -100,7 +100,7 @@ public sealed class RefundApiTests(PostgreSqlFixture database)
         using var unknown = await SendRefundAsync(host, Guid.NewGuid(), 25000, "refund-unknown");
         Assert.Equal(HttpStatusCode.NotFound, unknown.StatusCode);
         using var finance = await SendAsync(host, "finance", HttpMethod.Post, $"/v1/settlements/{settlement.Id}/refund",
-            new RefundRequest(Usd(25000)), "refund-finance");
+            new RefundRequest(Usd(25000), "Synthetic full refund"), "refund-finance");
         Assert.Equal(HttpStatusCode.Forbidden, finance.StatusCode);
 
         await ReleaseAsync(host, Assert.Single(await HoldsAsync(host, settlement.Id)).Id);
@@ -160,7 +160,7 @@ public sealed class RefundApiTests(PostgreSqlFixture database)
         await using var scope = provider.CreateAsyncScope();
 
         var exception = await Assert.ThrowsAsync<RefundException>(() => scope.ServiceProvider.GetRequiredService<RefundService>()
-            .RefundAsync("demo-client-1", settlement.Id, Usd(25000), "refund-1", CancellationToken.None));
+            .RefundAsync("demo-client-1", settlement.Id, Usd(25000), "refund-1", CancellationToken.None, "Synthetic full refund"));
 
         Assert.Equal(RefundException.InBatch, exception.Code);
         Assert.Equal(1L, await host.ScalarAsync<long>("SELECT count(*) FROM ledger.journal_entries"));
@@ -177,10 +177,10 @@ public sealed class RefundApiTests(PostgreSqlFixture database)
         await using var scope = provider.CreateAsyncScope();
 
         await Assert.ThrowsAsync<SettlementNotFoundException>(() => scope.ServiceProvider.GetRequiredService<RefundService>()
-            .RefundAsync("another-client", settlement.Id, Usd(25000), "refund-1", CancellationToken.None));
+            .RefundAsync("another-client", settlement.Id, Usd(25000), "refund-1", CancellationToken.None, "Synthetic full refund"));
 
         using var foreignPost = await SendAsync(host, "integrator-other", HttpMethod.Post,
-            $"/v1/settlements/{settlement.Id}/refund", new RefundRequest(Usd(25000)), "foreign-refund");
+            $"/v1/settlements/{settlement.Id}/refund", new RefundRequest(Usd(25000), "Synthetic full refund"), "foreign-refund");
         Assert.Equal(HttpStatusCode.NotFound, foreignPost.StatusCode);
 
         await RefundAsync(host, settlement.Id, 25000, "refund-1");
@@ -218,7 +218,7 @@ public sealed class RefundApiTests(PostgreSqlFixture database)
     }
 
     private static Task<HttpResponseMessage> SendRefundAsync(IdentityApiHost host, Guid settlementId, long minor, string? key) =>
-        SendAsync(host, "integrator", HttpMethod.Post, $"/v1/settlements/{settlementId}/refund", new RefundRequest(Usd(minor)), key);
+        SendAsync(host, "integrator", HttpMethod.Post, $"/v1/settlements/{settlementId}/refund", new RefundRequest(Usd(minor), "Synthetic full refund"), key);
 
     private static async Task<RefundResponse> RefundAsync(IdentityApiHost host, Guid settlementId, long minor, string key)
     {

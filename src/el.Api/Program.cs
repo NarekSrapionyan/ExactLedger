@@ -83,6 +83,7 @@ app.UseApiSecurity();
 app.MapIdentityEndpoints();
 app.MapLedgerEndpoints();
 app.MapKnowledgeEndpoints();
+app.MapPartyEndpoints();
 app.MapSettlementEndpoints();
 app.MapEscrowEndpoints();
 app.MapRefundEndpoints();
