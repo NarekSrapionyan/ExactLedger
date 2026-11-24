@@ -164,7 +164,7 @@ public sealed class ReportApiTests(PostgreSqlFixture database)
         var profile = await PublishProfileAsync(host, escrow: true);
         var settlement = await SubmitAsync(host, profile, "refund-report", Today);
         using var refund = await SendAsync(host, "integrator", HttpMethod.Post, $"/v1/settlements/{settlement.Id}/refund",
-            new { amount = Usd(25000) }, "refund-report");
+            new { amount = Usd(25000), reason = "Synthetic full refund" }, "refund-report");
         refund.EnsureSuccessStatusCode();
         var report = await ReadAsync(host, "payee-statement", "payee-seller-1");
         Assert.Equal("204.95", report.Totals.Single().Amounts["grossAllocation"]);

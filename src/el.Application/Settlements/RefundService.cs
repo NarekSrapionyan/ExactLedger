@@ -11,7 +11,7 @@ namespace el.Application.Settlements;
 
 /// <summary>The stored result of a full refund, also returned for an identical retry.</summary>
 public sealed record SettlementRefundResult(Guid SettlementId, string ClientId, Guid JournalEntryId, Guid OriginalJournalEntryId,
-    string Currency, long AmountMinor, DateTimeOffset RefundedAtUtc, IReadOnlyList<Guid> RefundedHoldIds);
+    string Currency, long AmountMinor, DateTimeOffset RefundedAtUtc, IReadOnlyList<Guid> RefundedHoldIds, string? Reason = null);
 
 public sealed record StoredRefundCommand(string RequestHash, SettlementRefundResult Refund);
 
@@ -56,14 +56,20 @@ public sealed class RefundService(IRefundStore refunds, ISettlementStore settlem
     /// <exception cref="SettlementNotFoundException">The settlement does not exist or belongs to another client.</exception>
     /// <exception cref="SettlementConflictException">The key was used with a different request.</exception>
     /// <exception cref="RefundException">The settlement is not eligible for a full refund.</exception>
-    public Task<SettlementRefundResult> RefundAsync(string clientId, Guid settlementId, Money amount, string key, CancellationToken ct)
+    public Task<SettlementRefundResult> RefundAsync(string clientId, Guid settlementId, Money amount, string key, CancellationToken ct, string? reason = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(clientId);
         ArgumentNullException.ThrowIfNull(amount);
         if (string.IsNullOrWhiteSpace(key) || key.Length > 128 || !key.All(character => character is >= '!' and <= '~'))
             throw new SettlementValidationException("INVALID_IDEMPOTENCY_KEY", "Supply a visible ASCII Idempotency-Key of 1 to 128 characters.");
 
-        var requestHash = RequestHash(settlementId, amount);
+        if (reason is not null)
+        {
+            reason = reason.Trim();
+            if (reason.Length is < 1 or > 500 || reason.Any(char.IsControl))
+                throw new SettlementValidationException("INVALID_REFUND_REASON", "Supply a refund reason of 1 to 500 characters.");
+        }
+        var requestHash = RequestHash(settlementId, amount, reason);
 
         return unitOfWork.ExecuteAsync(async token =>
         {
@@ -75,6 +81,10 @@ public sealed class RefundService(IRefundStore refunds, ISettlementStore settlem
                 if (command.RequestHash != requestHash) throw new SettlementConflictException("IDEMPOTENCY_CONFLICT");
                 return command.Refund;
             }
+
+            // A retained legacy command can still be retried without a reason; new refunds require one.
+            if (reason is null)
+                throw new SettlementValidationException("INVALID_REFUND_REASON", "A reason is required for a new refund.");
 
             var settlement = await settlements.GetAsync(settlementId, token);
             if (settlement is null || !string.Equals(settlement.Input.ClientId, clientId, StringComparison.Ordinal))
@@ -103,7 +113,7 @@ public sealed class RefundService(IRefundStore refunds, ISettlementStore settlem
             await posting.PostWithinTransactionAsync(entry, token);
 
             var refund = new SettlementRefundResult(settlementId, clientId, entry.Id.Value, settlement.JournalEntryId,
-                currency.Value, settlement.Input.GrossMinor, Now(), holds.Select(hold => hold.Id).ToArray());
+                currency.Value, settlement.Input.GrossMinor, Now(), holds.Select(hold => hold.Id).ToArray(), reason);
             await refunds.AddAsync(refund, key, requestHash, token);
             await audit.RecordAsync("settlement.refunded", settlementId.ToString(), token);
 
@@ -111,9 +121,10 @@ public sealed class RefundService(IRefundStore refunds, ISettlementStore settlem
         }, ct);
     }
 
-    private static string RequestHash(Guid settlementId, Money amount) =>
+    private static string RequestHash(Guid settlementId, Money amount, string? reason) =>
         Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(
-            FormattableString.Invariant($"refund|{settlementId:N}|{amount.Currency.Value}|{amount.MinorUnits}"))));
+            FormattableString.Invariant($"refund|{settlementId:N}|{amount.Currency.Value}|{amount.MinorUnits}")
+            + (reason is null ? "" : "|reason:" + reason))));
 
     // PostgreSQL keeps microseconds; normalize so the first response equals every later read.
     private DateTimeOffset Now()

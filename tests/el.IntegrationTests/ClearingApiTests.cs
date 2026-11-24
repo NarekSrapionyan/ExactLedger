@@ -175,7 +175,7 @@ public sealed partial class ClearingApiTests(PostgreSqlFixture database)
         var profile = await PublishProfileAsync(host, escrow: true);
         var refunded = await SubmitAsync(host, profile, "T-REFUNDED", Today.AddDays(-1));
         using (var refund = await SendAsync(host, "integrator", HttpMethod.Post, $"/v1/settlements/{refunded.Id}/refund",
-            new RefundRequest(Usd(25000)), "refund-1"))
+            new RefundRequest(Usd(25000), "Synthetic full refund"), "refund-1"))
         {
             Assert.Equal(HttpStatusCode.Created, refund.StatusCode);
         }
@@ -189,7 +189,7 @@ public sealed partial class ClearingApiTests(PostgreSqlFixture database)
             "SELECT string_agg(kind, ',' ORDER BY kind) FROM ledger.clearing_batch_entries"));
 
         using var late = await SendAsync(host, "integrator", HttpMethod.Post, $"/v1/settlements/{kept.Id}/refund",
-            new RefundRequest(Usd(25000)), "refund-2");
+            new RefundRequest(Usd(25000), "Synthetic full refund"), "refund-2");
         await ErrorAsync(late, HttpStatusCode.Conflict, "SETTLEMENT_IN_BATCH");
     }
 
@@ -200,7 +200,7 @@ public sealed partial class ClearingApiTests(PostgreSqlFixture database)
         var profile = await PublishProfileAsync(host, escrow: true);
         var settlement = await SubmitAsync(host, profile, "T-REFUNDED", Today.AddDays(-1));
         using (var refund = await SendAsync(host, "integrator", HttpMethod.Post, $"/v1/settlements/{settlement.Id}/refund",
-            new RefundRequest(Usd(25000)), "refund-1"))
+            new RefundRequest(Usd(25000), "Synthetic full refund"), "refund-1"))
         {
             Assert.Equal(HttpStatusCode.Created, refund.StatusCode);
         }
@@ -242,7 +242,7 @@ public sealed partial class ClearingApiTests(PostgreSqlFixture database)
             await holdLock.ExecuteNonQueryAsync();
 
         Task<HttpResponseMessage> Refund() => SendAsync(host, "integrator", HttpMethod.Post,
-            $"/v1/settlements/{settlement.Id}/refund", new RefundRequest(Usd(25000)), "race-refund");
+            $"/v1/settlements/{settlement.Id}/refund", new RefundRequest(Usd(25000), "Synthetic full refund"), "race-refund");
         Task<HttpResponseMessage> Cut() => SendAsync(host, "finance", HttpMethod.Post,
             "/v1/clearing-batches", new PrepareBatchRequest(Yesterday, "USD"));
         async Task WaitForContenders(int count)

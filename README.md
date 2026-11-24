@@ -11,3 +11,5 @@ For captured-trade settlement, exact calculation trace and safe retries, see the
 For financial reports and immutable CSV downloads, see the [reporting guide](docs/development/reports.md).
 
 For a repeatable backend demonstration, backup/restore and performance checks, follow the [delivery runbook](docs/development/delivery-runbook.md).
+
+For mobile dashboard lists, Admin participant setup and refund reasons, see the [backend acceptance contracts](docs/development/backend-acceptance.md).

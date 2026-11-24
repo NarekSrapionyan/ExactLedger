@@ -44,6 +44,7 @@ internal sealed class RefundStore(ExactLedgerDbContext db) : IRefundStore
             Currency = refund.Currency,
             AmountMinor = refund.AmountMinor,
             RefundedAtUtc = refund.RefundedAtUtc,
+            Reason = refund.Reason,
         });
 
         var holds = await db.Set<EscrowHoldRecord>().AsNoTracking()
@@ -73,6 +74,6 @@ internal sealed class RefundStore(ExactLedgerDbContext db) : IRefundStore
                              select hold.Id).ToListAsync(ct);
 
         return new SettlementRefundResult(row.SettlementId, row.ClientId, row.JournalEntryId, settlement.JournalEntryId,
-            row.Currency, row.AmountMinor, row.RefundedAtUtc.ToUniversalTime(), holdIds.AsReadOnly());
+            row.Currency, row.AmountMinor, row.RefundedAtUtc.ToUniversalTime(), holdIds.AsReadOnly(), row.Reason);
     }
 }

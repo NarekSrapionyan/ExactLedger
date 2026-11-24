@@ -7,6 +7,7 @@ submit a trade. The server uses the identity's client binding, never a body fiel
 
 | Endpoint | Access / result |
 | --- | --- |
+| GET /v1/settlements | Recent summaries; offset/limit/currency; full readers, own-client Integrator or own-allocation Payee |
 | POST /v1/settlements | Integrator; required Idempotency-Key; original or safely retried result returns 201 |
 | GET /v1/settlements/{id} | Finance/Admin/Auditor, owning Integrator, participating Payee |
 | GET /v1/settlements/{id}/trace | Same access; full calculation for full readers, own whitelist for Payee |
@@ -16,6 +17,9 @@ OpenAPI documents the required key and full vs Payee response variants. Money
 always uses exact decimal-string/currency objects. Rates are percentage × 1,000,000.
 Fractions and weighted quotient/remainder values are integer strings; weights and
 rates remain integers. Never convert money through Double on mobile.
+
+Recent-list response shape, server-derived scope and pagination are documented
+in [backend acceptance contracts](backend-acceptance.md).
 
 ```json
 {

@@ -52,6 +52,9 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IKnowledgeStore, KnowledgeStore>();
         services.AddScoped<KnowledgeService>();
         services.AddScoped<ISettlementStore, SettlementStore>();
+        services.AddScoped<ISettlementQueries, SettlementQueries>();
+        services.AddScoped<IPartyProvisioningStore, PartyProvisioningStore>();
+        services.AddScoped<PartyProvisioningService>();
         services.AddSingleton<ISettlementCodec, SettlementCodec>();
         services.AddScoped<SettlementService>();
         services.AddScoped<IEscrowStore, EscrowStore>();
