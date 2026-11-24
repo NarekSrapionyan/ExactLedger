@@ -165,5 +165,15 @@ controlled hold release/refund transitions; initial holds currently remain Held.
 See the [settlement guide](settlements.md) for requests, results, hash replay and
 worked fixtures. Existing migrations are preserved.
 
+## Report artifacts (BE-014)
+
+`20261124170000_ReportExports` adds SQL-backed `report_exports`: original CSV bytes,
+SHA-256 checked against those bytes, count, per-currency totals, generation time,
+stored party scope and actor-bound idempotency key/request hash. Runtime has
+SELECT/INSERT only; UPDATE/DELETE/TRUNCATE are also rejected by history triggers.
+The EF model snapshot is unchanged. Report generation and audit commit together;
+reports never post financial entries. See [report contracts](reports.md) and
+[backup/restore instructions](delivery-runbook.md).
+
 ## Clearing (BE-013)
 `ledger.journal_entries.sequence` (identity) is the cut watermark. Tables: `payout_parties`, `clearing_batches`, `clearing_batch_entries`, `payout_instructions`, `clearing_batch_exports`, `clearing_batch_confirmations`, `payout_confirmations`. Insert-only (EL104); append only inside the creating transaction (EL501); batch consistency (EL502); export match (EL503); confirmation backed by an export and exact postings (EL504). Hand-written migration `20261122100000_ClearingBatches`; the EF model snapshot is unchanged because these tables are accessed with SQL.

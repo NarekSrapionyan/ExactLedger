@@ -7,3 +7,7 @@ For local PostgreSQL and API startup, follow the [Docker Compose setup](docs/dev
 For versioned regional rules and corporate fee/escrow profiles, see the [configuration guide](docs/development/knowledge-configuration.md).
 
 For captured-trade settlement, exact calculation trace and safe retries, see the [settlement guide](docs/development/settlements.md).
+
+For financial reports and immutable CSV downloads, see the [reporting guide](docs/development/reports.md).
+
+For a repeatable backend demonstration, backup/restore and performance checks, follow the [delivery runbook](docs/development/delivery-runbook.md).

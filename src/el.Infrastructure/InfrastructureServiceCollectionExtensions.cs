@@ -9,6 +9,7 @@ using el.Infrastructure.Security;
 using el.Application.Knowledge;
 using el.Application.Settlements;
 using el.Application.Clearing;
+using el.Application.Reporting;
 
 namespace el.Infrastructure;
 
@@ -64,6 +65,8 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<ClearingExportService>();
         services.AddScoped<IClearingConfirmationStore, ClearingConfirmationStore>();
         services.AddScoped<ClearingConfirmationService>();
+        services.AddScoped<IReportStore, ReportStore>();
+        services.AddScoped<ReportService>();
 
         return services;
     }

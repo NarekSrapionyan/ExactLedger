@@ -1,0 +1,55 @@
+{
+  "measuredAtUtc": "2026-11-24T16:59:32.145400+00:00",
+  "platform": "Windows-10-10.0.26200-SP0",
+  "processor": "AMD64 Family 23 Model 96 Stepping 1, AuthenticAMD",
+  "logicalCpuCount": 12,
+  "python": "3.11.0",
+  "docker": "29.7.2",
+  "dataset": {
+    "trades": 10000,
+    "grossUsdPerTrade": "250.00",
+    "concurrentClients": 5,
+    "dailyBatchTrades": 1000
+  },
+  "settlement": {
+    "samples": 10000,
+    "p95_ms": 246.94
+  },
+  "reads": {
+    "journal-register": {
+      "samples": 30,
+      "p95_ms": 896.05
+    },
+    "trial-balance": {
+      "samples": 30,
+      "p95_ms": 61.91
+    },
+    "account-balances": {
+      "samples": 30,
+      "p95_ms": 70.3
+    },
+    "payee-statement": {
+      "samples": 30,
+      "p95_ms": 387.7
+    },
+    "batch-summary": {
+      "samples": 30,
+      "p95_ms": 60.64
+    },
+    "payout-instructions": {
+      "samples": 30,
+      "p95_ms": 47.99
+    }
+  },
+  "batch": {
+    "prepare_ms": 1145.28,
+    "export_ms": 51.42
+  },
+  "checks": {
+    "prePostReconciliation": true,
+    "trialBalance": true,
+    "csvHash": true,
+    "backupRestore": true
+  },
+  "targetsMet": true
+}

@@ -41,8 +41,8 @@ With the default ports:
 - OpenAPI: <http://localhost:8080/openapi/v1.json>
 - Host database address: `localhost:5432`; inside Compose: `postgres:5432`.
 
-These are the existing API foundation endpoints. Compose does not add settlement
-or posting endpoints. `/health/live` checks the process, not database readiness.
+Business APIs are described in the [delivery runbook](delivery-runbook.md).
+`/health/live` checks the process, not database readiness.
 The local API uses the Development environment and HTTP; published ports bind
 only to `127.0.0.1`. This configuration is for local development and QA.
 

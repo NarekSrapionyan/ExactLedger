@@ -126,20 +126,20 @@ Never pass a caller's requested owner as the resource owner. Role permission alo
 does not grant access to another client or payee. Cross-owner or missing resources
 return the same 404; a denied operation role returns 403.
 
-`PayeeSettlementProjection` is the whitelist for future settlement readers:
+`PayeeSettlementProjection` is the whitelist for settlement readers:
 only rows tagged to the authenticated party are included; global/other-party trace,
 party identifiers, arbitrary trace payload and payout references are omitted. A
 broader authorized Finance/Admin/Auditor settlement view is distinct from this slice.
 For artifact downloads, use the policy for that artifact's operation and the stored
 owner where applicable; never expose static files or a generic download bypass.
 
-Refund, escrow release, clearing, reporting and artifact endpoints arrive in
-their own tasks. [Settlement APIs](settlements.md) are available through BE-011.
-Configuration APIs are available through
-[BE-010's configuration guide](knowledge-configuration.md). The BE-009 foundation
-supplies and HTTP-tests the shared security gates
-without publishing fake business routes or manual-journal commands. Future handlers
-must use these gates and retain their own cross-owner HTTP acceptance tests.
+The implemented workflows are documented in [settlements](settlements.md),
+[refunds](refunds.md), [escrow](escrow.md), [clearing](clearing.md),
+[financial reports and artifact downloads](reports.md), and
+[configuration](knowledge-configuration.md). Report routes require authentication,
+then enforce the report kind's operation grant and stored party scope; downloads
+repeat those checks against the immutable artifact. Cross-owner isolation is
+verified through HTTP tests.
 
 ## Errors, logs and audit
 

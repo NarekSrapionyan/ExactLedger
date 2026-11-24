@@ -8,6 +8,7 @@ using el.Application.Clearing;
 using el.Application.Knowledge;
 using el.Application.Settlements;
 using el.Domain.Settlements;
+using el.Application.Reporting;
 
 namespace el.Api.Errors;
 
@@ -22,6 +23,7 @@ internal sealed class ApiExceptionHandler(ILogger<ApiExceptionHandler> logger) :
 
         var (status, code) = exception switch
         {
+            ReportException report => (report.Status, report.Code),
             SettlementValidationException settlement => (400, settlement.Code),
             SettlementConflictException settlement => (409, settlement.Code),
             EscrowHoldException escrow => (409, escrow.Code),

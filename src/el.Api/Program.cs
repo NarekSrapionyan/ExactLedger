@@ -9,6 +9,7 @@ using el.Api.Documentation;
 using el.Api.Knowledge;
 using el.Api.Settlements;
 using el.Api.Clearing;
+using el.Api.Reporting;
 
 var seedIdentities = args.Contains("--seed-identities", StringComparer.Ordinal);
 var hostArguments = args.Where(argument => argument != "--seed-identities").ToArray();
@@ -88,6 +89,7 @@ app.MapRefundEndpoints();
 app.MapClearingEndpoints();
 app.MapClearingExportEndpoints();
 app.MapClearingConfirmationEndpoints();
+app.MapReportEndpoints();
 
 if (app.Environment.IsDevelopment())
 {
