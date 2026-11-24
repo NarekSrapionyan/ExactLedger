@@ -63,7 +63,7 @@ public static class ApiDocumentationExtensions
                         },
                     };
                 }
-                if (context.Description.ActionDescriptor.EndpointMetadata.OfType<IEndpointNameMetadata>().Any(item => item.EndpointName is "SubmitSettlement" or "RefundSettlement"))
+                if (context.Description.ActionDescriptor.EndpointMetadata.OfType<IEndpointNameMetadata>().Any(item => item.EndpointName is "SubmitSettlement" or "RefundSettlement" or "ExportFinancialReport"))
                 {
                     operation.Parameters ??= new List<IOpenApiParameter>();
                     operation.Parameters.Add(new OpenApiParameter

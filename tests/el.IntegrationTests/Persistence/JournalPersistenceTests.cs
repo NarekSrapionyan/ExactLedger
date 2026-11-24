@@ -35,7 +35,8 @@ public sealed class JournalPersistenceTests(PostgreSqlFixture database)
                 "20261121061818_SettlementWaterfall",
                 "20261121195342_EscrowRelease",
                 "20261121200926_SettlementRefunds",
-                "20261122100000_ClearingBatches"
+                "20261122100000_ClearingBatches",
+                "20261124170000_ReportExports"
             },
             await context.Database.GetAppliedMigrationsAsync());
 
