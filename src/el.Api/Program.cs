@@ -86,8 +86,8 @@ app.MapSettlementEndpoints();
 app.MapEscrowEndpoints();
 app.MapRefundEndpoints();
 app.MapClearingEndpoints();
-app.MapClearingExportEndpoints(); 
-app.MapClearingConfirmationEndpoints(); 
+app.MapClearingExportEndpoints();
+app.MapClearingConfirmationEndpoints();
 
 if (app.Environment.IsDevelopment())
 {

@@ -61,9 +61,9 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IClearingStore, ClearingStore>();
         services.AddScoped<ClearingService>();
         services.AddScoped<IClearingExportStore, ClearingExportStore>();
-        services.AddScoped<ClearingExportService>(); 
-        services.AddScoped<IClearingConfirmationStore, ClearingConfirmationStore>(); 
-        services.AddScoped<ClearingConfirmationService>(); 
+        services.AddScoped<ClearingExportService>();
+        services.AddScoped<IClearingConfirmationStore, ClearingConfirmationStore>();
+        services.AddScoped<ClearingConfirmationService>();
 
         return services;
     }

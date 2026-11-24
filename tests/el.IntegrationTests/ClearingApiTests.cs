@@ -224,6 +224,68 @@ public sealed partial class ClearingApiTests(PostgreSqlFixture database)
         Assert.Equal(2L, await CountAsync(host, "journal_entries"));
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Competing_refund_and_cut_cannot_both_consume_the_settlement(bool refundFirst)
+    {
+        await using var host = await IdentityApiHost.CreateAsync(database);
+        var profile = await PublishProfileAsync(host, escrow: true);
+        var settlement = await SubmitAsync(host, profile, "T-RACE", Today.AddDays(-1));
+        _ = await host.TokenAsync("finance");
+        _ = await host.TokenAsync("integrator");
+
+        await using var connection = new NpgsqlConnection(host.AdminConnection);
+        await connection.OpenAsync();
+        await using var transaction = await connection.BeginTransactionAsync();
+        await using (var holdLock = new NpgsqlCommand("SELECT pg_advisory_xact_lock(4993451089857960241)", connection, transaction))
+            await holdLock.ExecuteNonQueryAsync();
+
+        Task<HttpResponseMessage> Refund() => SendAsync(host, "integrator", HttpMethod.Post,
+            $"/v1/settlements/{settlement.Id}/refund", new RefundRequest(Usd(25000)), "race-refund");
+        Task<HttpResponseMessage> Cut() => SendAsync(host, "finance", HttpMethod.Post,
+            "/v1/clearing-batches", new PrepareBatchRequest(Yesterday, "USD"));
+        async Task WaitForContenders(int count)
+        {
+            var timeout = System.Diagnostics.Stopwatch.StartNew();
+            while (await host.ScalarAsync<long>("SELECT count(*) FROM pg_stat_activity WHERE datname = current_database() AND wait_event = 'advisory'") < count)
+            {
+                Assert.True(timeout.Elapsed < TimeSpan.FromSeconds(5), "The HTTP commands did not reach the monetary lock.");
+                await Task.Delay(20);
+            }
+        }
+
+        var first = refundFirst ? Refund() : Cut();
+        await WaitForContenders(1);
+        var second = refundFirst ? Cut() : Refund();
+        await WaitForContenders(2);
+        Assert.False(first.IsCompleted);
+        Assert.False(second.IsCompleted);
+        await transaction.CommitAsync();
+
+        using var firstResponse = await first;
+        using var secondResponse = await second;
+        var refundResponse = refundFirst ? firstResponse : secondResponse;
+        var cutResponse = refundFirst ? secondResponse : firstResponse;
+        Assert.Equal(HttpStatusCode.Created, cutResponse.StatusCode);
+        var batch = (await cutResponse.Content.ReadFromJsonAsync<ClearingBatchResponse>(Json))!;
+        if (refundFirst)
+        {
+            Assert.Equal(HttpStatusCode.Created, refundResponse.StatusCode);
+            Assert.Empty(batch.Instructions);
+            Assert.Equal("0.00", batch.Total.Amount);
+            Assert.Equal(2, batch.EntryCount);
+            Assert.Equal(2L, await CountAsync(host, "journal_entries"));
+        }
+        else
+        {
+            await ErrorAsync(refundResponse, HttpStatusCode.Conflict, "SETTLEMENT_IN_BATCH");
+            Assert.Equal("191.95", batch.Total.Amount);
+            Assert.Equal(0L, await CountAsync(host, "settlement_refunds"));
+            Assert.Equal(1L, await CountAsync(host, "journal_entries"));
+        }
+    }
+
     [Fact]
     public async Task Cut_input_is_validated_and_an_empty_cut_creates_nothing()
     {
