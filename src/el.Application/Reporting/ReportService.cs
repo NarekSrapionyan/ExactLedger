@@ -1,7 +1,6 @@
 using System.Globalization;
 using System.Numerics;
 using System.Text;
-using System.Text.Json;
 using el.Application.Abstractions;
 using el.Application.Audit;
 using el.Domain.Clearing;
@@ -36,7 +35,15 @@ public sealed class ReportService(IReportStore store, IUnitOfWork unitOfWork,
         Validate(filter);
         if (string.IsNullOrWhiteSpace(key) || key.Length > 128 || key.Any(char.IsControl))
             throw new ReportException(400, "INVALID_IDEMPOTENCY_KEY");
-        var hash = ArtifactHash.Sha256Hex(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new { kind, filter })));
+        // Every field has a validated, newline-free canonical form; no serializer dependency in Application.
+        var command = string.Join("\n", new[]
+        {
+            "report-v1", kind, filter.Currency ?? "", filter.PartyId?.ToString("D") ?? "",
+            filter.From?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? "",
+            filter.To?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? "",
+            filter.CutSequence?.ToString(CultureInfo.InvariantCulture) ?? "", filter.BatchId?.ToString("D") ?? "",
+        });
+        var hash = ArtifactHash.Sha256Hex(Encoding.UTF8.GetBytes(command));
         return unitOfWork.ExecuteAsync(async token =>
         {
             // Serialize export retries and freeze the same business state used by monetary operations.
