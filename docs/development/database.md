@@ -164,3 +164,6 @@ All amounts, holds, journal, audit and key commit together. BE-012 will introduc
 controlled hold release/refund transitions; initial holds currently remain Held.
 See the [settlement guide](settlements.md) for requests, results, hash replay and
 worked fixtures. Existing migrations are preserved.
+
+## Clearing (BE-013)
+`ledger.journal_entries.sequence` (identity) is the cut watermark. Tables: `payout_parties`, `clearing_batches`, `clearing_batch_entries`, `payout_instructions`, `clearing_batch_exports`, `clearing_batch_confirmations`, `payout_confirmations`. Insert-only (EL104); append only inside the creating transaction (EL501); batch consistency (EL502); export match (EL503); confirmation backed by an export and exact postings (EL504). Hand-written migration `20261122100000_ClearingBatches`; the EF model snapshot is unchanged because these tables are accessed with SQL.

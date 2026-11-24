@@ -63,6 +63,11 @@ public sealed class ApiHostTests
         var refund = paths.GetProperty("/v1/settlements/{id}/refund").GetProperty("post");
         Assert.Contains(refund.GetProperty("parameters").EnumerateArray(), parameter =>
             parameter.GetProperty("name").GetString() == "Idempotency-Key" && parameter.GetProperty("required").GetBoolean());
+        var statementBody = paths.GetProperty("/v1/clearing-batches/{id}/confirm-simulated").GetProperty("post")
+            .GetProperty("requestBody");
+        Assert.True(statementBody.GetProperty("required").GetBoolean());
+        Assert.Equal("string", statementBody.GetProperty("content").GetProperty("text/csv")
+            .GetProperty("schema").GetProperty("type").GetString());
     }
 
     [Fact]

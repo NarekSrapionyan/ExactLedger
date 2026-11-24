@@ -8,6 +8,7 @@ using el.Application.Security;
 using el.Infrastructure.Security;
 using el.Application.Knowledge;
 using el.Application.Settlements;
+using el.Application.Clearing;
 
 namespace el.Infrastructure;
 
@@ -55,8 +56,14 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IEscrowStore, EscrowStore>();
         services.AddScoped<EscrowService>();
         services.AddScoped<IRefundStore, RefundStore>();
-        services.TryAddScoped<ISettlementBatchMembership, NoSettlementBatchMembership>();
+        services.AddScoped<ISettlementBatchMembership, ClearingBatchMembership>();
         services.AddScoped<RefundService>();
+        services.AddScoped<IClearingStore, ClearingStore>();
+        services.AddScoped<ClearingService>();
+        services.AddScoped<IClearingExportStore, ClearingExportStore>();
+        services.AddScoped<ClearingExportService>();
+        services.AddScoped<IClearingConfirmationStore, ClearingConfirmationStore>();
+        services.AddScoped<ClearingConfirmationService>();
 
         return services;
     }

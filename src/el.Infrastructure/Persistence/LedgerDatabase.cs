@@ -1,6 +1,6 @@
 namespace el.Infrastructure.Persistence;
 
-/// <summary>Names and SQLSTATE codes defined by the ledger safety migration.</summary>
+/// <summary>Names and SQLSTATE codes defined by the ledger safety migrations.</summary>
 public static class LedgerDatabase
 {
     /// <summary>NOLOGIN group role with the runtime privileges; runtime login users are members of it.</summary>
@@ -29,4 +29,16 @@ public static class LedgerDatabase
 
     /// <summary>A refund is not an exact, linked reversal of its settlement with all holds marked Refunded.</summary>
     public const string InvalidRefund = "EL403";
+
+    /// <summary>A row was appended to a clearing batch after the transaction that created it.</summary>
+    public const string ClearingAppendAfterCommit = "EL501";
+
+    /// <summary>A clearing batch disagrees with its entries, instructions, the ledger or the one-unconfirmed-batch rule.</summary>
+    public const string InvalidClearingBatch = "EL502";
+
+    /// <summary>A payout export does not match its batch.</summary>
+    public const string InvalidClearingExport = "EL503";
+
+    /// <summary>A confirmation is not backed by an export and exact Dr Payable / Cr Clearing postings.</summary>
+    public const string InvalidClearingConfirmation = "EL504";
 }

@@ -21,8 +21,7 @@ Checked under the shared monetary lock, in this order:
 | Amount differs from the original gross (including currency) | 400 `REFUND_AMOUNT_MISMATCH` |
 | An escrow hold of the settlement was released | 409 `HOLD_ALREADY_RELEASED` |
 
-Batch membership comes from `ISettlementBatchMembership`. No batches exist before BE-013, so the
-default implementation reports none; BE-013.1 replaces it. Refunds and the daily cut both take the
+Batch membership comes from `ISettlementBatchMembership`. A settlement is assigned once its journal entry is in ledger.clearing_batch_entries. Refunds and the daily cut both take the
 shared monetary lock, so a refund and a cut can never interleave.
 
 ## Reversal

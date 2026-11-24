@@ -8,6 +8,7 @@ using el.Api.Ledger;
 using el.Api.Documentation;
 using el.Api.Knowledge;
 using el.Api.Settlements;
+using el.Api.Clearing;
 
 var seedIdentities = args.Contains("--seed-identities", StringComparer.Ordinal);
 var hostArguments = args.Where(argument => argument != "--seed-identities").ToArray();
@@ -43,6 +44,16 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 builder.Services.AddInfrastructure(provider => provider.GetRequiredService<IConfiguration>()
     .GetConnectionString(InfrastructureServiceCollectionExtensions.RuntimeConnectionStringName));
 
+// Daily cut. The hosted service runs only when Clearing:Schedule:Enabled is true; the manual trigger is always available.
+builder.Services.AddOptions<ClearingScheduleOptions>().BindConfiguration(ClearingScheduleOptions.SectionName)
+    .Validate(options => options.TryGetTime(out _), "Clearing:Schedule:TimeUtc must use HH:mm.").ValidateOnStart();
+builder.Services.AddSingleton<ClearingScheduleRunner>();
+
+if (builder.Configuration.GetValue<bool>("Clearing:Schedule:Enabled"))
+{
+    builder.Services.AddHostedService<ClearingScheduleService>();
+}
+
 builder.Services.AddHealthChecks();
 builder.Services.AddApiDocumentation();
 
@@ -74,6 +85,9 @@ app.MapKnowledgeEndpoints();
 app.MapSettlementEndpoints();
 app.MapEscrowEndpoints();
 app.MapRefundEndpoints();
+app.MapClearingEndpoints();
+app.MapClearingExportEndpoints();
+app.MapClearingConfirmationEndpoints();
 
 if (app.Environment.IsDevelopment())
 {

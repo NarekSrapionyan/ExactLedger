@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
     <UserSecretsId>ExactLedger-el.Api-8025a407-6c86-4be8-9c87-d8794a1a54d1</UserSecretsId>

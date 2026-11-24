@@ -52,6 +52,17 @@ public static class ApiDocumentationExtensions
             });
             options.AddOperationTransformer((operation, context, _) =>
             {
+                if (context.Description.ActionDescriptor.EndpointMetadata.OfType<IEndpointNameMetadata>().Any(item => item.EndpointName == "ConfirmClearingBatch"))
+                {
+                    operation.RequestBody = new OpenApiRequestBody
+                    {
+                        Required = true,
+                        Content = new Dictionary<string, OpenApiMediaType>
+                        {
+                            ["text/csv"] = new OpenApiMediaType { Schema = new OpenApiSchema { Type = JsonSchemaType.String } },
+                        },
+                    };
+                }
                 if (context.Description.ActionDescriptor.EndpointMetadata.OfType<IEndpointNameMetadata>().Any(item => item.EndpointName is "SubmitSettlement" or "RefundSettlement"))
                 {
                     operation.Parameters ??= new List<IOpenApiParameter>();

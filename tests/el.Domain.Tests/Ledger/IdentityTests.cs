@@ -98,6 +98,6 @@ public sealed class IdentityTests
         Assert.Equal(Money.FromMinorUnits(25000, Usd), Money.FromMinorUnits(25000, Usd));
 
         // Two accounts with identical data are still different entities when their IDs differ.
-        Assert.NotEqual(Clearing(), Clearing());
+        Assert.NotEqual(LedgerFixtures.ClearingAccount(), LedgerFixtures.ClearingAccount());
     }
 }
