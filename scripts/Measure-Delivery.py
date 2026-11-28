@@ -43,6 +43,7 @@ def main():
         "SEED_PASSWORD": secrets.token_urlsafe(24),
         "JWT_SIGNING_KEY": base64.b64encode(secrets.token_bytes(48)).decode(),
         "API_PORT": str(api_port), "POSTGRES_PORT": str(pg_port),
+        "CLEARING_SCHEDULE_ENABLED": "false", "ESCROW_SCHEDULE_ENABLED": "false",
     }
     ENV_FILE.write_text("".join(f"{k}={v}\n" for k, v in settings.items()), encoding="utf-8")
     environment = os.environ.copy()

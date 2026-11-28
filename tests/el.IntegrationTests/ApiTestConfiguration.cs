@@ -19,5 +19,7 @@ internal static class ApiTestConfiguration
                 [$"{JwtSettings.SectionName}:Issuer"] = "exactledger-tests",
                 [$"{JwtSettings.SectionName}:Audience"] = "exactledger-test-clients",
                 [$"{JwtSettings.SectionName}:SigningKey"] = SigningKey,
+                ["Clearing:Schedule:Enabled"] = "false",
+                ["Escrow:Schedule:Enabled"] = "false",
             }));
 }

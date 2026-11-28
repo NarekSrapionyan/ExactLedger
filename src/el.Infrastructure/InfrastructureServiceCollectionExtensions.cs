@@ -40,6 +40,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IMonetaryOperationLock, MonetaryOperationLock>();
         services.AddScoped<IJournalAccountVerifier, JournalAccountVerifier>();
         services.AddScoped<ILedgerBalanceQueries, LedgerBalanceQueries>();
+        services.AddScoped<IAccountRegisterQueries, AccountRegisterQueries>();
         services.AddScoped<JournalPostingService>();
         services.TryAddSingleton(TimeProvider.System);
         services.AddScoped(_ => new AuditContext("system", Guid.NewGuid().ToString("N")));
@@ -58,6 +59,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<ISettlementCodec, SettlementCodec>();
         services.AddScoped<SettlementService>();
         services.AddScoped<IEscrowStore, EscrowStore>();
+        services.AddScoped<IEscrowQueries, EscrowStore>();
         services.AddScoped<EscrowService>();
         services.AddScoped<IRefundStore, RefundStore>();
         services.AddScoped<ISettlementBatchMembership, ClearingBatchMembership>();

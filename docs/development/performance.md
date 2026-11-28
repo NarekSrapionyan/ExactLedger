@@ -58,6 +58,8 @@ database owned by the migration role, then verifies 10,000 settlements, 10,001
 journals, one report artifact and zero trial-balance difference.
 
 Reproduce with `python scripts/Measure-Delivery.py` from the repository root. It
+explicitly disables both background timers to keep the measured fixture under
+manual control; normal Compose startup enables them. It
 requires Docker Compose and Python standard library only. The reference fixture
 has one currency, one seller and no held escrow; these timings are not claims about
 unmeasured currencies/beneficiary counts or concurrent read traffic. Automated

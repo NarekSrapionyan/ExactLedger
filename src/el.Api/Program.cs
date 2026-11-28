@@ -45,15 +45,17 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 builder.Services.AddInfrastructure(provider => provider.GetRequiredService<IConfiguration>()
     .GetConnectionString(InfrastructureServiceCollectionExtensions.RuntimeConnectionStringName));
 
-// Daily cut. The hosted service runs only when Clearing:Schedule:Enabled is true; the manual trigger is always available.
+// Automatic jobs are enabled by default; manual endpoints use the same Application services.
 builder.Services.AddOptions<ClearingScheduleOptions>().BindConfiguration(ClearingScheduleOptions.SectionName)
     .Validate(options => options.TryGetTime(out _), "Clearing:Schedule:TimeUtc must use HH:mm.").ValidateOnStart();
 builder.Services.AddSingleton<ClearingScheduleRunner>();
+builder.Services.AddOptions<EscrowScheduleOptions>().BindConfiguration(EscrowScheduleOptions.SectionName)
+    .Validate(options => options.IntervalSeconds is >= 1 and <= 3600, "Escrow:Schedule:IntervalSeconds must be 1 to 3600.").ValidateOnStart();
+builder.Services.AddSingleton<EscrowScheduleRunner>();
 
-if (builder.Configuration.GetValue<bool>("Clearing:Schedule:Enabled"))
-{
-    builder.Services.AddHostedService<ClearingScheduleService>();
-}
+// Evaluate Enabled from the final bound options inside each worker, after all host configuration is applied.
+builder.Services.AddHostedService<ClearingScheduleService>();
+builder.Services.AddHostedService<EscrowScheduleService>();
 
 builder.Services.AddHealthChecks();
 builder.Services.AddApiDocumentation();

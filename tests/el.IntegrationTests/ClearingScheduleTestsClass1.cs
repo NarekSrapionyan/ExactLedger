@@ -30,11 +30,11 @@ public sealed class ClearingScheduleTests
     }
 
     [Fact]
-    public void The_schedule_is_off_and_at_00_05_utc_by_default()
+    public void The_schedule_is_enabled_and_at_00_05_utc_by_default()
     {
         var options = new ClearingScheduleOptions();
 
-        Assert.False(options.Enabled);
+        Assert.True(options.Enabled);
         Assert.True(options.TryGetTime(out var time));
         Assert.Equal(new TimeOnly(0, 5), time);
     }
