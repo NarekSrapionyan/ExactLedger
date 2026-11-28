@@ -33,8 +33,17 @@ Require these status checks in the repository branch rules for both shared branc
 
 - `Build and test (ubuntu-latest)`
 - `Build and test (windows-latest)`
+- `Compose smoke (ubuntu-latest)`
 
-Pull requests and both CI checks are required. Approving reviews are optional by owner decision on 2026-11-14; any review discussions must still be resolved. Force pushes remain blocked and no deletion restriction is added. A workflow file does not itself enable branch protection; repository branch rules must be configured separately. PostgreSQL-backed tests will join this workflow when BE-007 introduces migrations and database fixtures. Current API tests need no database service.
+Pull requests and all three CI checks are required. Team process requires review and an `Approved` decision from someone other than the PR author. GitHub intentionally enforces zero required approving reviews: missing approval does not technically block merge, but this does not make review optional in the team's process. Any review discussions must still be resolved. Force pushes remain blocked and no deletion restriction is added. A workflow file does not itself enable branch protection; repository branch rules must be configured separately.
+
+Tests marked `[Trait("Category", "PostgreSQL")]` start PostgreSQL with Testcontainers and need Docker. The Linux job runs them; the Windows job runs every other test with `--filter "Category!=PostgreSQL"` because hosted Windows runners cannot run Linux containers. See `docs/development/database.md`.
+
+The separate `Compose smoke (ubuntu-latest)` job runs `scripts/Test-LocalCompose.ps1`
+in parallel to build and exercise the [local Compose environment](local-docker.md),
+including role provisioning, migrations, API startup and persistence across
+container recreation. It uses an isolated temporary project, not the developer's
+database, and needs no .NET SDK on the runner because the images build the solution.
 
 ## Coverage
 
@@ -44,18 +53,32 @@ Results live under the ignored `artifacts/test-results` directory. Start each in
 
 ## Architecture and monetary policy
 
-`el.ArchitectureTests` verifies the allowed production project-reference graph, forbids Domain package/framework dependencies and prevents shared build files from injecting project/framework/package references.
+`el.ArchitectureTests` verifies the allowed production project-reference graph,
+forbids Domain/Application package, framework and raw assembly references, and
+prevents root or nested production `.props`/`.targets` files from injecting
+project/framework/package/assembly references. XML namespaces do not bypass inspection.
 
 A small test-only Roslyn policy inspects production C# in `el.Domain` and `el.Application`, excluding `bin`/`obj`. It rejects:
 
 | Rule | Forbidden usage |
 | --- | --- |
-| EL001 | `float`/`double`, including inferred binary floating-point expressions |
-| EL002 | Decimal division, `/=` and `decimal.Divide` in exact financial calculation paths |
+| EL001 | `float`/`double`/`System.Half`, including inferred binary floating-point expressions |
+| EL002 | Decimal division, `/=`, `decimal.Divide`, and generic division without an integer constraint |
 | EL003 | `DateTime`/`DateTimeOffset` current-time properties and `TimeProvider.System` |
-| EL004 | Current/default thread culture reads |
-| EL005 | HTTP, persistence and serialization APIs in Domain/Application |
+| EL004 | Current/default thread culture and NumberFormatInfo/DateTimeFormatInfo.CurrentInfo reads |
+| EL005 | Network (including sockets), persistence (including ADO.NET), and serialization (including XmlSerializer) APIs in Domain/Application |
 
 Use scaled integers/BigInteger quotient and remainder, explicitly supplied time and invariant formatting. Negative fixtures exercise each rule, aliases, static imports and malformed source. Valid integer arithmetic is an allowed fixture. Invalid fixture code exists only in test strings, never in production projects.
 
 The policy is deliberately scoped to Domain/Application. API/Infrastructure may use HTTP, serializers, databases, clocks and telemetry types. No broad exception or inline suppression switch is provided; change a rule with its positive/negative tests and review the reason if the architecture changes.
+
+The policy checks every combination of symbols used in `#if`/`#elif`, including
+DEBUG, RELEASE and custom symbols. More than eight distinct symbols fails closed
+and requires review rather than leaving branches unchecked. Generic arithmetic
+constrained to `IBinaryInteger<T>` is permitted. Regression fixtures reproduce
+the conditional, generic-math, culture, I/O and dependency bypasses.
+
+These are test/CI checks, not build-time analyzers or a proof against arbitrary
+dynamic/reflection code. The 85% Domain line gate remains the recorded release
+gate. Tests demonstrate behavior and regression coverage; they cannot prove the
+historical order in which code and tests were written.

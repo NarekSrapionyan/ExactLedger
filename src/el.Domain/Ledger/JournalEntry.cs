@@ -8,7 +8,9 @@ namespace el.Domain.Ledger;
 /// A balanced, immutable double-entry journal entry in one currency. It can only be created
 /// through <see cref="Create"/> or <see cref="FromGeneratedComponents"/>, which enforce:
 /// at least two lines, positive amounts, one currency for all lines and their accounts,
-/// active accounts, and debits exactly equal to credits. Atomic posting is BE-008.
+/// active accounts, and debits exactly equal to credits. Each entry records the business event
+/// it comes from (<see cref="Reference"/>) and, for a reversal, the entry it reverses.
+/// Atomic posting is BE-008.
 /// </summary>
 public sealed class JournalEntry : Entity<JournalEntryId>
 {
@@ -16,19 +18,29 @@ public sealed class JournalEntry : Entity<JournalEntryId>
 
     private JournalEntry(
         JournalEntryId id,
+        JournalReference reference,
         string description,
+        JournalEntryId? reversalOf,
         CurrencyCode currency,
         ReadOnlyCollection<JournalLine> lines,
         BigInteger totalMinorUnits)
         : base(id)
     {
+        Reference = reference;
         Description = description;
+        ReversalOf = reversalOf;
         Currency = currency;
         Lines = lines;
         TotalMinorUnits = totalMinorUnits;
     }
 
+    /// <summary>The business event this entry records; unique across the ledger.</summary>
+    public JournalReference Reference { get; }
+
     public string Description { get; }
+
+    /// <summary>The entry this one reverses, if it is a reversal. An entry can be reversed once (enforced by persistence).</summary>
+    public JournalEntryId? ReversalOf { get; }
 
     public CurrencyCode Currency { get; }
 
@@ -40,8 +52,13 @@ public sealed class JournalEntry : Entity<JournalEntryId>
 
     /// <summary>Creates an entry from explicitly submitted lines. Zero and negative lines are rejected.</summary>
     /// <exception cref="JournalValidationException">A ledger invariant is broken.</exception>
-    public static JournalEntry Create(JournalEntryId id, string description, IEnumerable<JournalLineDraft> lines) =>
-        Build(id, description, Snapshot(lines, nameof(lines)));
+    public static JournalEntry Create(
+        JournalEntryId id,
+        JournalReference reference,
+        string description,
+        IEnumerable<JournalLineDraft> lines,
+        JournalEntryId? reversalOf = null) =>
+        Build(id, reference, description, reversalOf, Snapshot(lines, nameof(lines)));
 
     /// <summary>
     /// Creates an entry from calculated components such as a settlement waterfall. Zero-valued
@@ -50,9 +67,16 @@ public sealed class JournalEntry : Entity<JournalEntryId>
     /// <exception cref="JournalValidationException">A ledger invariant is broken.</exception>
     public static JournalEntry FromGeneratedComponents(
         JournalEntryId id,
+        JournalReference reference,
         string description,
-        IEnumerable<JournalLineDraft> components) =>
-        Build(id, description, Snapshot(components, nameof(components)).Where(line => !line.Amount.IsZero).ToArray());
+        IEnumerable<JournalLineDraft> components,
+        JournalEntryId? reversalOf = null) =>
+        Build(
+            id,
+            reference,
+            description,
+            reversalOf,
+            Snapshot(components, nameof(components)).Where(line => !line.Amount.IsZero).ToArray());
 
     private static JournalLineDraft[] Snapshot(IEnumerable<JournalLineDraft> lines, string parameterName)
     {
@@ -68,11 +92,28 @@ public sealed class JournalEntry : Entity<JournalEntryId>
         return snapshot;
     }
 
-    private static JournalEntry Build(JournalEntryId id, string description, JournalLineDraft[] drafts)
+    private static JournalEntry Build(
+        JournalEntryId id,
+        JournalReference reference,
+        string description,
+        JournalEntryId? reversalOf,
+        JournalLineDraft[] drafts)
     {
         if (id == default)
         {
             throw new ArgumentException("A journal entry ID must not be empty.", nameof(id));
+        }
+
+        ArgumentNullException.ThrowIfNull(reference);
+
+        if (reversalOf == default(JournalEntryId))
+        {
+            throw new ArgumentException("The reversed entry ID must not be empty.", nameof(reversalOf));
+        }
+
+        if (reversalOf == id)
+        {
+            throw new ArgumentException("A journal entry cannot reverse itself.", nameof(reversalOf));
         }
 
         ArgumentException.ThrowIfNullOrWhiteSpace(description);
@@ -130,6 +171,6 @@ public sealed class JournalEntry : Entity<JournalEntryId>
             throw new JournalValidationException(JournalError.Unbalanced);
         }
 
-        return new JournalEntry(id, description, currency, Array.AsReadOnly(lines), debits);
+        return new JournalEntry(id, reference, description, reversalOf, currency, Array.AsReadOnly(lines), debits);
     }
 }

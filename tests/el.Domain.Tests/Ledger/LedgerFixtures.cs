@@ -16,7 +16,7 @@ internal static class LedgerFixtures
     internal static AccountId NewAccountId() =>
         new(new Guid(Interlocked.Increment(ref _nextAccount), 0, 0, new byte[] { 0, 0, 0, 0, 0, 0, 0, 1 }));
 
-    internal static Account Clearing(CurrencyCode? currency = null) =>
+    internal static Account ClearingAccount(CurrencyCode? currency = null) =>
         new(NewAccountId(), AccountCode.Parse("CLEARING.BANK"), AccountType.Clearing, currency ?? Usd, null);
 
     internal static Account Revenue(CurrencyCode? currency = null) =>
@@ -38,4 +38,6 @@ internal static class LedgerFixtures
         new(account, EntrySide.Credit, Amount(minorUnits, currency ?? account.Currency));
 
     internal static JournalEntryId EntryId() => new(Guid.Parse("33333333-3333-3333-3333-333333333333"));
+
+    internal static JournalReference Reference() => JournalReference.Parse("TEST:ENTRY-1");
 }

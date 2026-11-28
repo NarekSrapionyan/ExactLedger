@@ -45,8 +45,15 @@ jobs:
       - name: Build with warnings as errors
         run: dotnet build ExactLedger.sln --configuration Release --no-restore -warnaserror
 
-      - name: Run architecture, financial safety and application tests
+      # Linux runners have Docker, so Testcontainers starts PostgreSQL for the database tests.
+      - name: Run all tests, including PostgreSQL
+        if: ${{ runner.os == 'Linux' }}
         run: dotnet test ExactLedger.sln --configuration Release --no-build --no-restore --logger trx --results-directory artifacts/test-results --collect "XPlat Code Coverage" --settings coverage.runsettings
+
+      # Windows runners cannot run Linux containers; database tests are covered by the Linux job.
+      - name: Run tests except PostgreSQL
+        if: ${{ runner.os != 'Linux' }}
+        run: dotnet test ExactLedger.sln --configuration Release --no-build --no-restore --filter "Category!=PostgreSQL" --logger trx --results-directory artifacts/test-results --collect "XPlat Code Coverage" --settings coverage.runsettings
 
       - name: Check Domain coverage
         shell: pwsh
@@ -60,3 +67,20 @@ jobs:
           path: artifacts/test-results/
           if-no-files-found: warn
           retention-days: 14
+
+  compose-smoke:
+    # Separate from build-and-test so it runs in parallel and a registry or Docker
+    # problem is reported on its own check. The images build the solution
+    # themselves, so no .NET SDK is installed on the runner.
+    name: Compose smoke (ubuntu-latest)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
+      - name: Verify local Compose environment
+        shell: pwsh
+        run: ./scripts/Test-LocalCompose.ps1

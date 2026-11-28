@@ -47,5 +47,6 @@ Example: `feat(domain): add Money value object (BE-002.2)`
      Explain items that do not apply to this change. -->
 
 ## Reviewers
-- Approving review is optional; any approval must come from someone other than the author
+- Team process requires a review and an `Approved` decision from someone other than the author
+- GitHub does not enforce an approval count: missing approval does not technically block merge
 - QA Champion checks the Definition of Done before merge

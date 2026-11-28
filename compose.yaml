@@ -1,0 +1,78 @@
+services:
+  postgres:
+    image: postgres:17.6-alpine
+    environment:
+      POSTGRES_DB: exactledger
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Copy .env.example to .env and set local passwords}
+      MIGRATION_PASSWORD: ${MIGRATION_PASSWORD:?Set MIGRATION_PASSWORD in .env}
+      APP_PASSWORD: ${APP_PASSWORD:?Set APP_PASSWORD in .env}
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./docker/postgres/01-create-roles.sh:/docker-entrypoint-initdb.d/01-create-roles.sh:ro
+    healthcheck:
+      # TCP stays unavailable until the image's first-run initialization has completed.
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U postgres -d exactledger"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+      start_period: 10s
+
+  migrate:
+    profiles: [tools, app]
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: migrations
+    environment:
+      ConnectionStrings__ExactLedgerMigrations: >-
+        Host=postgres;Database=exactledger;Username=exactledger_migrations;Password="${MIGRATION_PASSWORD:?Set MIGRATION_PASSWORD in .env}"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  seed:
+    profiles: [tools, app]
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: api
+    entrypoint: ["dotnet", "el.Api.dll", "--seed-identities"]
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__ExactLedgerMigrations: >-
+        Host=postgres;Database=exactledger;Username=exactledger_migrations;Password="${MIGRATION_PASSWORD:?Set MIGRATION_PASSWORD in .env}"
+      Authentication__SeedPassword: ${SEED_PASSWORD:?Set a local SEED_PASSWORD of at least 16 characters in .env}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: "no"
+
+  api:
+    profiles: [app]
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: api
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_HTTP_PORTS: "8080"
+      Clearing__Schedule__Enabled: ${CLEARING_SCHEDULE_ENABLED:-true}
+      Escrow__Schedule__Enabled: ${ESCROW_SCHEDULE_ENABLED:-true}
+      Escrow__Schedule__IntervalSeconds: ${ESCROW_INTERVAL_SECONDS:-60}
+      Authentication__Jwt__Issuer: ExactLedger
+      Authentication__Jwt__Audience: ExactLedger.Clients
+      Authentication__Jwt__SigningKey: ${JWT_SIGNING_KEY:?Set a base64 JWT_SIGNING_KEY with at least 32 random bytes in .env}
+      ConnectionStrings__ExactLedger: >-
+        Host=postgres;Database=exactledger;Username=exactledger_app;Password="${APP_PASSWORD:?Set APP_PASSWORD in .env}"
+    ports:
+      - "127.0.0.1:${API_PORT:-8080}:8080"
+    depends_on:
+      seed:
+        condition: service_completed_successfully
+
+volumes:
+  postgres-data:

@@ -43,6 +43,8 @@ Both enforce, in this order, and report a `JournalError` with the 1-based line n
 
 A validated entry and its lines are immutable. Lines keep the submitted order and reference accounts by `AccountId`.
 
+Each entry has a `JournalReference` naming the business event it records (for example `SETTLEMENT:T-1001:CAPTURE`), and a reversal names the entry it reverses (`ReversalOf`); an entry cannot reverse itself. Uniqueness of references and one reversal per entry are enforced by persistence (BE-007.3).
+
 ## Boundaries
 
 Persistence, database constraints and seeding are BE-007. Atomic posting, the monetary lock, posting time and balances are BE-008. Checks that need other aggregates, such as whether an account's party is active, belong to the posting use cases.

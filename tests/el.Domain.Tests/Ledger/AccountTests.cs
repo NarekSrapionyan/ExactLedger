@@ -105,7 +105,7 @@ public sealed class AccountTests
     [Fact]
     public void Account_exposes_the_normal_side_of_its_type()
     {
-        Assert.Equal(EntrySide.Debit, Clearing().NormalSide);
+        Assert.Equal(EntrySide.Debit, LedgerFixtures.ClearingAccount().NormalSide);
         Assert.Equal(EntrySide.Credit, Payable().NormalSide);
     }
 

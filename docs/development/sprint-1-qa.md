@@ -113,8 +113,10 @@ not as passed or implemented. Journal construction in BE-006 is not a database c
 2. The delegated QA executor records PASS/FAIL with their identity, candidate SHA, evidence,
    execution limitations and owner-accepted lower-severity issues. For this release, Codex
    may execute the checklist and record the result under the owner's explicit authorization.
-3. Open a release PR into `main` for the tested BE-001..BE-006 candidate. Approving reviews
-   are optional by owner decision on 2026-11-14; resolved review discussions and both
+3. Open a release PR into `main` for the tested BE-001..BE-006 candidate. Team process requires
+   review and an `Approved` decision from someone other than the PR author. GitHub enforces
+   zero required approving reviews, so missing approval does not technically block merge.
+   This setting does not make review optional. Resolved review discussions and both
    Linux/Windows CI checks remain mandatory, as does testing against the current target branch.
    If `development` advanced into BE-007, use a release branch from the accepted candidate
    rather than releasing untested work.
