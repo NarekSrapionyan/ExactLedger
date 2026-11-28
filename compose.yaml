@@ -60,6 +60,9 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_HTTP_PORTS: "8080"
+      Clearing__Schedule__Enabled: ${CLEARING_SCHEDULE_ENABLED:-true}
+      Escrow__Schedule__Enabled: ${ESCROW_SCHEDULE_ENABLED:-true}
+      Escrow__Schedule__IntervalSeconds: ${ESCROW_INTERVAL_SECONDS:-60}
       Authentication__Jwt__Issuer: ExactLedger
       Authentication__Jwt__Audience: ExactLedger.Clients
       Authentication__Jwt__SigningKey: ${JWT_SIGNING_KEY:?Set a base64 JWT_SIGNING_KEY with at least 32 random bytes in .env}

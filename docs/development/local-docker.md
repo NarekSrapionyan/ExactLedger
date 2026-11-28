@@ -131,6 +131,11 @@ docker compose --profile app up --build -d
 
 ## Automated smoke check
 
+Daily clearing and periodic escrow release are enabled by default. Set
+`CLEARING_SCHEDULE_ENABLED=false` and `ESCROW_SCHEDULE_ENABLED=false` in `.env`
+for a manual demo. `ESCROW_INTERVAL_SECONDS` defaults to 60. See
+[automation and PRP routes](automation-and-contracts.md) for scheduling semantics.
+
 `scripts/Test-LocalCompose.ps1` builds and starts a separate temporary Compose
 project with generated credentials and free host ports. It verifies migrations,
 API liveness/OpenAPI, seeded login and an authenticated audit read, the non-root API user, runtime-role restrictions, and that

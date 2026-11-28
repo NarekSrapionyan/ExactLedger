@@ -4,6 +4,7 @@ using el.Application.Audit;
 using el.Application.Clearing;
 using el.Domain.Common;
 using Microsoft.Extensions.Options;
+using el.Api.Escrow;
 
 namespace el.Api.Clearing;
 
@@ -12,7 +13,7 @@ public sealed class ClearingScheduleOptions
 {
     public const string SectionName = "Clearing:Schedule";
 
-    public bool Enabled { get; init; }
+    public bool Enabled { get; init; } = true;
 
     public string TimeUtc { get; init; } = "00:05";
 
@@ -21,10 +22,13 @@ public sealed class ClearingScheduleOptions
 }
 
 /// <summary>Prepares the previous UTC day for every supported currency as the "scheduler" actor.</summary>
-public sealed class ClearingScheduleRunner(IServiceScopeFactory scopes, TimeProvider clock, ILogger<ClearingScheduleRunner> logger)
+public sealed class ClearingScheduleRunner(IServiceScopeFactory scopes, TimeProvider clock, ILogger<ClearingScheduleRunner> logger,
+    EscrowScheduleRunner escrow)
 {
     public async Task<int> RunAsync(CancellationToken ct)
     {
+        // Release funds due now before capturing each currency's committed journal watermark.
+        await escrow.RunAsync(ct);
         var businessDate = DateOnly.FromDateTime(clock.GetUtcNow().UtcDateTime.AddDays(-1));
         var prepared = 0;
 
@@ -70,6 +74,7 @@ public sealed class ClearingScheduleService(ClearingScheduleRunner runner, TimeP
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        if (!options.Value.Enabled) return;
         options.Value.TryGetTime(out var time);
 
         while (!stoppingToken.IsCancellationRequested)

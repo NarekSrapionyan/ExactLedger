@@ -27,7 +27,7 @@ public interface IEscrowStore
 
     Task<IReadOnlyList<EscrowHold>> HoldsForSettlementAsync(Guid settlementId, CancellationToken ct);
 
-    /// <summary>IDs of Held holds due at <paramref name="asOfUtc"/>, oldest due first.</summary>
+    /// <summary>Due Held IDs: eligible work first, then oldest due; blocked holds cannot starve a bounded run.</summary>
     Task<IReadOnlyList<Guid>> DueHoldIdsAsync(DateTimeOffset asOfUtc, int limit, CancellationToken ct);
 
     Task<EscrowRelease?> FindReleaseAsync(Guid holdId, CancellationToken ct);
@@ -38,6 +38,12 @@ public interface IEscrowStore
     Task<bool> IsPartyActiveAsync(Guid partyId, CancellationToken ct);
 
     Task AddReleaseAsync(EscrowRelease release, CancellationToken ct);
+}
+
+public interface IEscrowQueries
+{
+    Task<IReadOnlyList<EscrowHold>> ListAsync(Guid? settlementId, Guid? partyId, string? currency,
+        int offset, int limit, CancellationToken ct);
 }
 
 /// <summary>
@@ -74,7 +80,7 @@ public sealed class EscrowService(IEscrowStore store, IUnitOfWork unitOfWork, IM
         }, ct);
 
     /// <summary>
-    /// Scheduler entry point: releases every hold due now, oldest first, up to <see cref="MaxReleasesPerRun"/>.
+    /// Scheduler entry point: processes up to <see cref="MaxReleasesPerRun"/> due holds, eligible first, then oldest due.
     /// Holds whose party or accounts are not active are skipped and stay Held.
     /// </summary>
     public Task<DueEscrowReleaseResult> ReleaseDueAsync(CancellationToken ct) =>

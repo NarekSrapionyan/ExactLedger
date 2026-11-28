@@ -66,5 +66,6 @@ and verify its original retry result.
 
 The representation boundary is recorded in [ADR 0015](../architecture/0015-backend-acceptance-boundary.md).
 The system continues to use synthetic rules and explicit simulated confirmation.
-Enable the daily timer with `Clearing__Schedule__Enabled=true`; default is manual
-demonstration. Swift UI/device acceptance remains separate.
+Daily clearing and periodic escrow release are enabled by default; see
+[automation and PRP routes](automation-and-contracts.md) for controls and period
+balances. Swift UI/device acceptance remains separate.

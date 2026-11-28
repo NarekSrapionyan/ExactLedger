@@ -12,6 +12,9 @@
 Payout CSV: `reference,business_date,party_id,currency,amount`. Statement CSV: `reference,currency,amount,source` (source `SYNTHETIC`).
 Errors: UNSUPPORTED_CURRENCY, INVALID_BUSINESS_DATE, UNCONFIRMED_BATCH_EXISTS, CLEARING_VERIFICATION_FAILED, BATCH_NOT_EXPORTED, STATEMENT_INVALID, STATEMENT_MISMATCH, STATEMENT_CONFLICT.
 Configuration: `Clearing:Schedule:Enabled`, `Clearing:Schedule:TimeUtc`.
+The timer is enabled by default and runs at `00:05` UTC. Each scheduled run first
+releases due escrow, then prepares batches. See [automation](automation-and-contracts.md)
+for disabling timers and handling retries. Export and bank confirmation remain explicit.
 
 Confirmation sends the CSV as the raw `text/csv` request body; OpenAPI declares this
 required body explicitly. Exporting or simulating a statement never posts payment.

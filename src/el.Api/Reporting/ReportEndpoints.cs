@@ -24,8 +24,16 @@ public static class ReportEndpoints
         group.MapGet("/exports/{id:guid}", MetadataAsync).WithName("ReadReportExport").Produces<ReportExportResponse>();
         group.MapGet("/exports/{id:guid}/download", DownloadAsync).WithName("DownloadReportExport").Produces(200, contentType: "text/csv");
         group.ProducesProblem(400).ProducesProblem(401).ProducesProblem(403).ProducesProblem(404).ProducesProblem(409).ProducesProblem(503);
+        endpoints.MapGet("/v1/payees/{id:guid}/statement", PayeeStatementAsync).WithName("ReadPayeeStatement")
+            .RequireAuthorization(Permission.ReadBalancesAndPayouts.ToString()).WithTags("Reports").Produces<ReportResponse>()
+            .ProducesProblem(400).ProducesProblem(401).ProducesProblem(403).ProducesProblem(404);
         return endpoints;
     }
+
+    /// <summary>Read a payee statement through the PRP route; ownership and filters match the reporting endpoint.</summary>
+    public static Task<IResult> PayeeStatementAsync(Guid id, string? currency, DateOnly? from, DateOnly? to,
+        int? offset, int? limit, HttpContext context, ReportService service, CancellationToken ct) =>
+        ReadAsync("payee-statement", currency, id, from, to, null, null, offset, limit, context, service, ct);
 
     /// <summary>Read a filtered report. Finance/Auditor read ledger reports; Payees read only their party's balances, statement and instructions.</summary>
     /// <remarks>Kinds: account-balances, trial-balance, journal-register, payee-statement, payout-instructions, batch-summary.</remarks>

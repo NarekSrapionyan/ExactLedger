@@ -7,6 +7,7 @@ using el.Application.Ledger;
 using el.Application.Security;
 using el.Domain.Common;
 using el.Domain.Ledger;
+using el.Application.Reporting;
 
 namespace el.Api.Ledger;
 
@@ -28,11 +29,17 @@ public sealed record TrialBalanceResponse(string Currency, AmountResponse DebitT
 /// <summary>Immutable business audit metadata.</summary>
 public sealed record AuditEventResponse(Guid Id, string ActorId, string Operation, string TargetId,
     DateTimeOffset OccurredAtUtc, string CorrelationId);
+/// <summary>Opening/closing normal-side balances and exact debit/credit activity for a UTC period.</summary>
+public sealed record AccountRegisterResponse(Guid Id, string Code, string Type, string NormalSide,
+    AmountResponse OpeningBalance, AmountResponse DebitTotal, AmountResponse CreditTotal, AmountResponse ClosingBalance);
 
 public static class LedgerEndpoints
 {
     public static IEndpointRouteBuilder MapLedgerEndpoints(this IEndpointRouteBuilder endpoints)
     {
+        endpoints.MapGet("/v1/ledger/accounts", AccountRegisterAsync).WithName("ReadLedgerAccounts")
+            .RequireAuthorization(Permission.ReadLedger.ToString()).Produces<IReadOnlyList<AccountRegisterResponse>>()
+            .ProducesValidationProblem().ProducesProblem(401).ProducesProblem(403).WithTags("Ledger");
         endpoints.MapGet("/v1/ledger/accounts/{accountId}/balance", AccountBalanceAsync)
             .RequireAuthorization(Permission.ReadBalancesAndPayouts.ToString())
             .Produces<AccountBalanceResponse>().ProducesProblem(401).ProducesProblem(403).ProducesProblem(404)
@@ -61,14 +68,38 @@ public static class LedgerEndpoints
             balance.NormalSide.ToString(), Format(balance.OnNormalSide(balance.NormalSide), balance.Currency)));
     }
 
-    /// <summary>Read all-time trial balances by currency (Finance/Auditor).</summary>
-    public static async Task<IResult> TrialBalanceAsync(string? currency, HttpContext context,
-        ILedgerBalanceQueries queries, CancellationToken cancellationToken)
+    /// <summary>Read ledger accounts, optionally filtered by currency and inclusive UTC dates (Finance/Auditor).</summary>
+    public static async Task<IResult> AccountRegisterAsync(string? currency, DateOnly? from, DateOnly? to,
+        int? offset, int? limit, HttpContext context, IAccountRegisterQueries queries, CancellationToken ct)
+    {
+        if ((currency is not null && currency is not ("USD" or "JPY" or "KWD")) || from > to
+            || (offset ?? 0) < 0 || (limit ?? 50) is < 1 or > 100)
+            return ApiErrorResponses.Validation(context, new Dictionary<string, string[]> { ["filters"] = ["Use USD/JPY/KWD, ordered UTC dates, offset >= 0 and limit 1 to 100."] });
+        var rows = await queries.ReadAsync(currency, from, to, offset ?? 0, limit ?? 50, ct);
+        return Results.Ok(rows.Select(row =>
+        {
+            var code = CurrencyCode.Parse(row.Currency);
+            var normal = AccountTypes.NormalSide(row.Type);
+            var sign = normal == EntrySide.Debit ? 1 : -1;
+            return new AccountRegisterResponse(row.Id, row.Code, row.Type.ToString(), normal.ToString(),
+                Format(sign * row.OpeningNetDebit, code), Format(row.DebitTotal, code), Format(row.CreditTotal, code), Format(sign * row.ClosingNetDebit, code));
+        }).ToArray());
+    }
+
+    /// <summary>Read trial balances by currency and optional inclusive UTC dates (Finance/Auditor).</summary>
+    public static async Task<IResult> TrialBalanceAsync(string? currency, DateOnly? from, DateOnly? to, HttpContext context,
+        ILedgerBalanceQueries queries, ReportService reports, CancellationToken cancellationToken)
     {
         var code = CurrencyReferenceData.Catalog.Definitions.Select(definition => definition.Code)
             .FirstOrDefault(code => string.Equals(code.Value, currency, StringComparison.Ordinal));
         if (currency is not null && code is null)
             return ApiErrorResponses.Validation(context, new Dictionary<string, string[]> { ["currency"] = ["Use USD, JPY or KWD."] });
+        if (from is not null || to is not null)
+        {
+            var report = await reports.ReadAsync("trial-balance", new ReportFilter(Currency: currency, From: from, To: to), cancellationToken);
+            return Results.Ok(report.Rows.Select(row => new TrialBalanceResponse(row["currency"],
+                new(row["debit"], row["currency"]), new(row["credit"], row["currency"]), row["debit"] == row["credit"])));
+        }
         var balances = await queries.GetTrialBalanceAsync(code, cancellationToken);
         return Results.Ok(balances.Select(balance => new TrialBalanceResponse(balance.Currency.Value,
             Format(balance.DebitTotal, balance.Currency), Format(balance.CreditTotal, balance.Currency), balance.IsBalanced)));

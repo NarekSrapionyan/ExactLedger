@@ -3,6 +3,7 @@ using el.Api.Authentication;
 using el.Application.Settlements;
 using el.Domain.Common;
 using el.Domain.Settlements;
+using el.Api.Errors;
 
 namespace el.Api.Escrow;
 
@@ -26,6 +27,10 @@ public static class EscrowEndpoints
     public static IEndpointRouteBuilder MapEscrowEndpoints(this IEndpointRouteBuilder endpoints)
     {
         var group = endpoints.MapGroup("/v1/escrow").WithTags("Escrow");
+        group.MapGet("/", ListAsync).WithName("ListEscrow")
+            .RequireAuthorization(Permission.ReadBalancesAndPayouts.ToString()).Produces<IReadOnlyList<EscrowHoldResponse>>();
+        group.MapPost("/{id:guid}/release", ReleaseAsync).WithName("ReleaseEscrow")
+            .RequireAuthorization(Permission.ReleaseEscrow.ToString()).Produces<EscrowReleaseResponse>();
         group.MapGet("/holds/{id:guid}", ReadHoldAsync).WithName("ReadEscrowHold")
             .RequireAuthorization(Permission.ReadBalancesAndPayouts.ToString()).Produces<EscrowHoldResponse>();
         group.MapGet("/holds", ListHoldsAsync).WithName("ListEscrowHolds")
@@ -44,6 +49,20 @@ public static class EscrowEndpoints
         var hold = await store.GetHoldAsync(id, ct);
         return hold is null || !ResourceAccess.Party(RequestIdentity.Get(context), hold.PartyId)
             ? Results.NotFound() : Results.Ok(ToResponse(hold));
+    }
+
+    /// <summary>List escrow across settlements, with bounded pagination and Payee ownership (PRP route).</summary>
+    public static async Task<IResult> ListAsync(Guid? settlementId, string? currency, int? offset, int? limit,
+        HttpContext context, IEscrowQueries queries, CancellationToken ct)
+    {
+        if (settlementId == Guid.Empty || (currency is not null && currency is not ("USD" or "JPY" or "KWD"))
+            || (offset ?? 0) < 0 || (limit ?? 50) is < 1 or > 100)
+            return ApiErrorResponses.Validation(context, new Dictionary<string, string[]> { ["filters"] = ["Use a valid settlement/currency, offset >= 0 and limit 1 to 100."] });
+        var identity = RequestIdentity.Get(context);
+        var global = ResourceAccess.Party(identity, null);
+        if (!global && identity.PartyId is null) return Results.Forbid();
+        var holds = await queries.ListAsync(settlementId, global ? null : identity.PartyId, currency, offset ?? 0, limit ?? 50, ct);
+        return Results.Ok(holds.Select(ToResponse).ToArray());
     }
 
     /// <summary>List the holds created by one settlement.</summary>

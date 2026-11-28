@@ -14,4 +14,10 @@ Status: Accepted (educational MVP)
 - Database guards EL501-EL504; history tables are insert-only.
 
 ## Consequences
-Refunds are rejected once the settlement is in a batch (`SETTLEMENT_IN_BATCH`). Scheduler: `Clearing:Schedule:Enabled` (default false), `TimeUtc` (default `00:05`).
+Refunds are rejected once the settlement is in a batch (`SETTLEMENT_IN_BATCH`). Scheduler: `Clearing:Schedule:Enabled` (default true), `TimeUtc` (default `00:05`).
+
+Automation follow-up: periodic escrow release also defaults to enabled, runs at
+startup and every 60 seconds, and is invoked before each scheduled cut captures
+its watermark. Both timers can be disabled for a manual demonstration. Bank
+export/confirmation remain explicit simulated operations; see
+[operating controls](../development/automation-and-contracts.md).

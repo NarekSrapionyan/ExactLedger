@@ -700,6 +700,7 @@ public sealed partial class ClearingApiTests(PostgreSqlFixture database)
         services.AddLogging();
         services.AddInfrastructure(host.RuntimeConnection);
         services.AddSingleton<ClearingScheduleRunner>();
+        services.AddSingleton<el.Api.Escrow.EscrowScheduleRunner>();
         await using var provider = services.BuildServiceProvider();
         var runner = provider.GetRequiredService<ClearingScheduleRunner>();
 
