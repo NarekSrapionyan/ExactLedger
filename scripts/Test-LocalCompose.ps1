@@ -24,6 +24,9 @@ $settings = [ordered]@{
     JWT_SIGNING_KEY = [Convert]::ToBase64String(([Guid]::NewGuid().ToByteArray() + [Guid]::NewGuid().ToByteArray()))
     POSTGRES_PORT = Get-FreePort
     API_PORT = $apiPort
+    CLEARING_SCHEDULE_ENABLED = 'true'
+    ESCROW_SCHEDULE_ENABLED = 'true'
+    ESCROW_INTERVAL_SECONDS = '60'
 }
 $savedEnvironment = @{}
 $composeArguments = @('compose', '--project-name', $project, '--env-file', $envFile, '--profile', 'app')
@@ -51,6 +54,21 @@ function Assert-RuntimeSql([string]$Sql, [string]$Expected) {
     if (($result -join "`n").Trim() -ne $Expected) { throw "Unexpected runtime SQL result: $result" }
 }
 
+function Wait-SchedulerAudit($Headers, [int]$MinimumRuns) {
+    $deadline = [DateTime]::UtcNow.AddSeconds(30)
+    do {
+        $events = Invoke-RestMethod "http://127.0.0.1:$apiPort/v1/audit-events?limit=100" -Headers $Headers
+        if (@($events | Where-Object { $_.operation -eq 'identity.seeded' }).Count -ne 9) {
+            throw 'Expected exactly nine identity provisioning audit events.'
+        }
+        if (@($events | Where-Object { $_.operation -eq 'escrow.release-run' -and $_.actorId -eq 'scheduler' }).Count -ge $MinimumRuns) {
+            return
+        }
+        Start-Sleep -Seconds 1
+    } while ([DateTime]::UtcNow -lt $deadline)
+    throw 'The enabled escrow worker did not record its startup run.'
+}
+
 Push-Location $root
 try {
     New-Item -ItemType Directory -Path (Split-Path -Parent $envFile) -Force | Out-Null
@@ -70,8 +88,9 @@ try {
     $login = Invoke-RestMethod "http://127.0.0.1:$apiPort/v1/auth/login" -Method Post -ContentType 'application/json' `
         -Body (@{ username = 'finance'; password = $seedPassword } | ConvertTo-Json)
     $headers = @{ Authorization = 'Bearer ' + $login.accessToken }
-    $auditEvents = Invoke-RestMethod "http://127.0.0.1:$apiPort/v1/audit-events" -Headers $headers
-    if (@($auditEvents).Count -ne 9) { throw 'Expected exactly nine identity provisioning audit events.' }
+    # Background jobs add legitimate audit events; verify provisioning separately
+    # and wait for the real worker rather than racing API liveness against startup.
+    Wait-SchedulerAudit $headers 1
     $uid = Invoke-Compose exec -T api id -u
     if (($uid -join '').Trim() -eq '0') { throw 'API must not run as root.' }
 
@@ -86,8 +105,9 @@ try {
     Invoke-Compose up --detach
     Wait-Api
     Assert-RuntimeSql "SELECT count(*) FROM ledger.parties WHERE name = 'Synthetic Compose Smoke'" '1'
-    Assert-RuntimeSql "SELECT count(*) FROM ledger.audit_events" '9'
-    Write-Output 'Compose smoke check passed: migrations, roles, API and persistent data.'
+    Assert-RuntimeSql "SELECT count(*) FROM ledger.audit_events WHERE operation='identity.seeded'" '9'
+    Wait-SchedulerAudit $headers 2
+    Write-Output 'Compose smoke check passed: migrations, roles, API, automatic escrow and persistent data.'
 }
 catch {
     & docker @composeArguments logs --no-color
